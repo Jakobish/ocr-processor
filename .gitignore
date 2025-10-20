@@ -1,5 +1,9 @@
 .DS_Store
 
+ocr_cli/
+ocr_force/
+temp/
+data/
 
 # Appended by Gitignore Generator Extension
 # Created by https://www.toptal.com/developers/gitignore/api/python

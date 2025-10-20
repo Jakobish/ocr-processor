@@ -9,8 +9,7 @@ from typing import Dict, Any, Optional
 from pathlib import Path
 from datetime import datetime
 import structlog
-from structlog.dev import ConsoleRenderer
-from structlog import JSONRenderer
+from structlog.dev import ConsoleRenderer, JSONRenderer
 import requests
 import time
 from config import config
