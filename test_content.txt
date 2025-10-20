@@ -1,0 +1,1 @@
+Test document for OCR processing with multiple lines of text to ensure proper recognition.

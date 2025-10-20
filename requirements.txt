@@ -1,0 +1,47 @@
+# OCR Processing Suite - Python Dependencies
+# Install with: pip install -r requirements.txt
+
+# Core OCR functionality
+ocrmypdf>=15.0.0
+
+# PDF processing and manipulation
+PyMuPDF>=1.23.0
+
+# Image processing for visual highlights
+Pillow>=10.0.0
+
+# HTML parsing for HOCR processing
+beautifulsoup4>=4.12.0
+
+# Recommended additional tools for enhanced functionality
+#qpdf
+
+# Enterprise features - Configuration & Environment
+python-dotenv>=1.0.0
+
+# Enterprise features - Enhanced logging and monitoring
+PyYAML>=6.0.0
+structlog>=23.0.0
+
+# Enterprise features - HTTP client for webhooks and APIs
+requests>=2.31.0
+
+# Enterprise features - Database integration (optional)
+SQLAlchemy>=2.0.0
+alembic>=1.12.0
+
+# Enterprise features - API framework (optional)
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# Enterprise features - Testing framework (optional)
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+
+# Optional: For advanced image processing (uncomment if needed)
+# numpy>=1.24.0
+# opencv-python>=4.8.0
+
+# Note: tkinter is included with Python by default and not needed in requirements.txt
+# Note: Tesseract OCR must be installed separately via system package manager
