@@ -12,7 +12,6 @@ from enum import Enum
 import json
 from pathlib import Path
 import psutil
-import os
 from logger import log_manager
 
 
@@ -144,7 +143,11 @@ class MetricsCollector:
                     self.system_metrics_history = self.system_metrics_history[-self.max_history_size:]
 
         except Exception as e:
-            log_manager.logger.warning("Failed to collect system metrics", error=str(e))
+            # Add null check for logger
+            if log_manager.logger is not None:
+                log_manager.logger.warning("Failed to collect system metrics", error=str(e))
+            else:
+                print(f"Failed to collect system metrics (logger not initialized): {e}")
 
     def get_metrics_report(self) -> Dict[str, Any]:
         """Generate comprehensive metrics report"""
@@ -192,7 +195,11 @@ class ProgressTracker:
                     self.metrics_collector.record_system_metrics()
                     time.sleep(30)  # Collect every 30 seconds
                 except Exception as e:
-                    log_manager.logger.error("Metrics collection error", error=str(e))
+                    # Add null check for logger
+                    if log_manager.logger is not None:
+                        log_manager.logger.error("Metrics collection error", error=str(e))
+                    else:
+                        print(f"Metrics collection error (logger not initialized): {e}")
                     time.sleep(60)
 
         metrics_thread = threading.Thread(target=collect_metrics, daemon=True)
@@ -215,13 +222,17 @@ class ProgressTracker:
         with self._lock:
             self.jobs[job_id] = job
 
-        log_manager.logger.info(
-            "Job created",
-            job_id=job_id,
-            input_path=input_path,
-            mode=mode,
-            priority=priority.value
-        )
+        # Add null check for logger
+        if log_manager.logger is not None:
+            log_manager.logger.info(
+                "Job created",
+                job_id=job_id,
+                input_path=input_path,
+                mode=mode,
+                priority=priority.value
+            )
+        else:
+            print(f"Job created: {job_id}, input: {input_path}, mode: {mode}")
 
         return job_id
 
@@ -238,12 +249,16 @@ class ProgressTracker:
             job.status = JobStatus.RUNNING
             job.started_at = datetime.now()
 
-        log_manager.logger.info(
-            "Job started",
-            job_id=job_id,
-            input_path=job.input_path,
-            mode=job.mode
-        )
+        # Add null check for logger
+        if log_manager.logger is not None:
+            log_manager.logger.info(
+                "Job started",
+                job_id=job_id,
+                input_path=job.input_path,
+                mode=job.mode
+            )
+        else:
+            print(f"Job started: {job_id}")
 
         return True
 
@@ -289,16 +304,20 @@ class ProgressTracker:
             self.metrics_collector.record_job_completion(job, processing_time, 0)  # TODO: Add file size
 
         status = "completed" if success else "failed"
-        log_manager.logger.info(
-            "Job finished",
-            job_id=job_id,
-            status=status,
-            processing_time=processing_time,
-            total_files=job.total_files,
-            processed_files=job.processed_files,
-            failed_files=job.failed_files,
-            error_message=error_message
-        )
+        # Add null check for logger
+        if log_manager.logger is not None:
+            log_manager.logger.info(
+                "Job finished",
+                job_id=job_id,
+                status=status,
+                processing_time=processing_time,
+                total_files=job.total_files,
+                processed_files=job.processed_files,
+                failed_files=job.failed_files,
+                error_message=error_message
+            )
+        else:
+            print(f"Job finished: {job_id}, status: {status}")
 
         # Trigger callbacks
         self._trigger_callbacks(job_id, 'complete', {
@@ -317,7 +336,11 @@ class ProgressTracker:
             job.status = JobStatus.CANCELLED
             job.completed_at = datetime.now()
 
-        log_manager.logger.info("Job cancelled", job_id=job_id)
+        # Add null check for logger
+        if log_manager.logger is not None:
+            log_manager.logger.info("Job cancelled", job_id=job_id)
+        else:
+            print(f"Job cancelled: {job_id}")
 
         self._trigger_callbacks(job_id, 'cancel', {})
 
@@ -395,11 +418,15 @@ class ProgressTracker:
                     try:
                         callback(job_id, event_type, data)
                     except Exception as e:
-                        log_manager.logger.error(
-                            "Progress callback error",
-                            job_id=job_id,
-                            error=str(e)
-                        )
+                        # Add null check for logger
+                        if log_manager.logger is not None:
+                            log_manager.logger.error(
+                                "Progress callback error",
+                                job_id=job_id,
+                                error=str(e)
+                            )
+                        else:
+                            print(f"Progress callback error for job {job_id}: {e}")
 
     def export_metrics(self, output_path: Optional[str] = None) -> str:
         """Export metrics to JSON file"""
@@ -411,17 +438,21 @@ class ProgressTracker:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_path = f"ocr_metrics_{timestamp}.json"
 
-        output_path = Path(output_path)
+        output_path = str(Path(output_path))
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(report, f, indent=2, ensure_ascii=False, default=str)
 
-        log_manager.logger.info(
-            "Metrics exported",
-            output_path=str(output_path),
-            event_type="metrics_export"
-        )
+        # Add null check for logger
+        if log_manager.logger is not None:
+            log_manager.logger.info(
+                "Metrics exported",
+                output_path=output_path,
+                event_type="metrics_export"
+            )
+        else:
+            print(f"Metrics exported to: {output_path}")
 
-        return str(output_path)
+        return output_path
 
     def cleanup_completed_jobs(self, older_than_days: int = 7):
         """Clean up old completed jobs"""
@@ -441,11 +472,15 @@ class ProgressTracker:
                     del self.job_callbacks[job_id]
 
         if jobs_to_remove:
-            log_manager.logger.info(
-                "Cleaned up old jobs",
-                removed_count=len(jobs_to_remove),
-                event_type="job_cleanup"
-            )
+            # Add null check for logger
+            if log_manager.logger is not None:
+                log_manager.logger.info(
+                    "Cleaned up old jobs",
+                    removed_count=len(jobs_to_remove),
+                    event_type="job_cleanup"
+                )
+            else:
+                print(f"Cleaned up old jobs: {len(jobs_to_remove)}")
 
 
 class ProgressReporter:
@@ -494,8 +529,13 @@ class ProgressReporter:
                 cpu = psutil.cpu_percent()
                 memory = psutil.virtual_memory()
                 print(f"   💻 CPU: {cpu:.1f}% | 💾 RAM: {memory.percent:.1f}%")
-        except:
-            pass
+        except Exception as e:
+            # Add null check for logger
+            if log_manager.logger is not None:
+                log_manager.logger.warning("Failed to print system metrics", error=str(e))
+            else:
+                # fallback: ignore silently if logger not initialized
+                pass
 
     def start_real_time_monitoring(self, job_id: str, update_interval: float = 2.0):
         """Start real-time progress monitoring"""
@@ -517,7 +557,11 @@ class ProgressReporter:
                 except KeyboardInterrupt:
                     break
                 except Exception as e:
-                    log_manager.logger.error("Monitoring error", error=str(e))
+                    # Add null check for logger
+                    if log_manager.logger is not None:
+                        log_manager.logger.error("Monitoring error", error=str(e))
+                    else:
+                        print(f"Monitoring error (logger not initialized): {e}")
                     time.sleep(1)
 
         monitor_thread = threading.Thread(target=monitor, daemon=True)

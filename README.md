@@ -14,22 +14,26 @@ This OCR suite provides advanced PDF text extraction and processing capabilities
 ## ✨ Key Features
 
 ### 🔧 Multiple Processing Modes
+
 - **CLI Mode** (`--mode cli`): Fast processing that preserves existing text
 - **Force Mode** (`--mode force`): Complete OCR processing with visual highlights and compression
 - **Visual Mode** (`--mode visual`): Processing with visual bounding box overlays
 
 ### 📁 Flexible Input Processing
+
 - **Single File**: Process individual PDF documents
 - **Directory Processing**: Batch process entire folders
 - **Recursive Search**: Automatically find PDFs in subdirectories
 - **Smart Filtering**: Only processes PDF files
 
 ### 🖼️ Visual Analysis Features
+
 - **HOCR Generation**: Extract spatial layout information
 - **Bounding Box Visualization**: Generate highlighted page images
 - **Sidecar Text Output**: Plain text extraction alongside PDF processing
 
 ### 📦 Advanced Output Management
+
 - **PDF/A Format**: Standards-compliant archival output
 - **Timestamped Folders**: Organized results with unique timestamps
 - **Comprehensive Logging**: Detailed processing logs per file
@@ -37,6 +41,7 @@ This OCR suite provides advanced PDF text extraction and processing capabilities
 - **ZIP Compression**: Automatic packaging for force mode
 
 ### 🌍 Multi-language Support
+
 - **Hebrew + English** (default): `heb+eng`
 - **English Only**: `eng`
 - **Custom Languages**: Support for any Tesseract language pack
@@ -44,6 +49,7 @@ This OCR suite provides advanced PDF text extraction and processing capabilities
 ## 📋 Requirements
 
 ### System Dependencies
+
 ```bash
 # macOS/Linux
 sudo apt-get install tesseract-ocr  # Ubuntu/Debian
@@ -52,6 +58,7 @@ brew install tesseract  # macOS
 ```
 
 ### Python Packages
+
 ```bash
 # Easy installation - all dependencies at once
 pip install -r requirements.txt
@@ -64,6 +71,7 @@ pip install PyMuPDF
 ```
 
 ### Recommended Additional Tools
+
 ```bash
 # For better PDF processing
 pip install qpdf
@@ -75,6 +83,7 @@ pip install numpy opencv-python
 ## 🚀 Quick Start
 
 ### Command Line Interface
+
 ```bash
 # Process a single PDF (CLI mode - default)
 python pdf-ocr-processor.py document.pdf
@@ -87,12 +96,14 @@ python pdf-ocr-processor.py --mode visual document.pdf
 ```
 
 ### Graphical User Interface
+
 ```bash
 # Launch the GUI
 python pdf_ocr_gui.py
 ```
 
 ### Directory Processing
+
 ```bash
 # Process all PDFs in a directory recursively
 python pdf-ocr-processor.py --mode force documents/
@@ -105,6 +116,7 @@ python pdf-ocr-processor.py --mode force --archive-dir ./backup documents/
 ```
 
 ### Language Selection
+
 ```bash
 # English only
 python pdf-ocr-processor.py --lang eng document.pdf
@@ -121,6 +133,7 @@ python pdf-ocr-processor.py --lang eng+fra+deu document.pdf
 The GUI provides an intuitive, user-friendly interface for all OCR processing operations:
 
 ### Launching the GUI
+
 ```bash
 python pdf_ocr_gui.py
 ```
@@ -128,11 +141,13 @@ python pdf_ocr_gui.py
 ### GUI Features
 
 #### **📁 Input Selection**
+
 - **File Browser**: Select individual PDF files with file dialog
 - **Directory Browser**: Choose folders for batch processing
 - **Drag & Drop Ready**: Easy file selection interface
 
 #### **⚙️ Processing Options**
+
 - **Mode Selection**: Dropdown for CLI, Force, and Visual modes
 - **Dynamic Descriptions**: Mode descriptions update based on selection
 - **Language Dropdown**: Support for multiple language combinations
@@ -141,12 +156,14 @@ python pdf_ocr_gui.py
 - **Recursive Toggle**: Enable/disable subdirectory processing
 
 #### **📊 Progress Tracking**
+
 - **Real-time Progress Bar**: Visual progress indication
 - **Status Updates**: Current operation status display
 - **Live Statistics**: Files processed vs skipped counters
 - **Processing Log**: Detailed activity log with timestamps
 
 #### **🛠️ Control Features**
+
 - **Start/Cancel Buttons**: Control processing operations
 - **Log Management**: Save log to file or clear display
 - **Tabbed Interface**: Separate tabs for processing and log viewing
@@ -183,18 +200,21 @@ python pdf_ocr_gui.py
 ### Processing Modes Explained
 
 #### CLI Mode (`--mode cli`)
+
 - **Speed**: Fastest processing mode
 - **Behavior**: Skips existing text, preserves layout
 - **Output**: PDF with OCR enhancement, text sidecar, HOCR file
 - **Use Case**: When you want to add OCR to text-light PDFs quickly
 
 #### Force Mode (`--mode force`)
+
 - **Speed**: Slower but thorough
 - **Behavior**: Forces OCR on all pages, even those with existing text
 - **Output**: All CLI mode outputs + visual highlights + ZIP archive
 - **Use Case**: When you need complete text replacement or visual analysis
 
 #### Visual Mode (`--mode visual`)
+
 - **Speed**: Moderate processing speed
 - **Behavior**: Creates visual highlights without forced OCR
 - **Output**: All CLI mode outputs + visual highlights (no ZIP)
@@ -204,7 +224,7 @@ python pdf_ocr_gui.py
 
 Each processing run creates a timestamped folder structure:
 
-```
+```text
 ocr_force/
 └── document_name_20231201_143022/
     ├── ocr_output.pdf      # OCR-enhanced PDF (PDF/A format)
@@ -221,6 +241,7 @@ ocr_force/
 ## 🔍 Advanced Features
 
 ### Archiving Original Files
+
 ```bash
 # Archive originals before processing
 python pdf-ocr-processor.py --mode force --archive-dir ./originals/ documents/
@@ -232,6 +253,7 @@ python pdf-ocr-processor.py --mode force --archive-dir ./originals/ documents/
 ```
 
 ### Custom Logging
+
 ```bash
 # Specify custom log file location
 python pdf-ocr-processor.py --log-file ./logs/processing.log document.pdf
@@ -240,6 +262,7 @@ python pdf-ocr-processor.py --log-file ./logs/processing.log document.pdf
 ```
 
 ### Processing Large Directories
+
 ```bash
 # Process with progress tracking
 python pdf-ocr-processor.py --mode force large_document_collection/
@@ -252,6 +275,7 @@ python pdf-ocr-processor.py --mode force large_document_collection/
 ### Common Issues
 
 #### Missing Dependencies
+
 ```bash
 # Install all required packages at once
 pip install -r requirements.txt
@@ -259,14 +283,25 @@ pip install -r requirements.txt
 # Or install individually if needed
 pip install ocrmypdf beautifulsoup4 Pillow PyMuPDF
 
-# GUI Requirements (already included in CLI requirements)
-# tkinter is included with Python by default and doesn't need installation
+# GUI Requirements (tkinter)
+# macOS with Homebrew Python - tkinter needs separate installation
+brew install python-tk@3.14  # For Python 3.14
+# OR
+brew reinstall python@3.14 --with-tcl-tk
+
+# Linux - tkinter is usually included with Python
+# Ubuntu/Debian users might need: sudo apt-get install python3-tk
+
+# Test tkinter installation
+python3 -c "import tkinter as tk; root = tk.Tk(); root.destroy(); print('tkinter is working!')"
 ```
 
 #### Requirements.txt File
+
 The `requirements.txt` file in this directory contains all necessary Python dependencies with version specifications for optimal compatibility. Use `pip install -r requirements.txt` for the easiest setup.
 
 #### Tesseract Not Found
+
 ```bash
 # Ubuntu/Debian
 sudo apt-get install tesseract-ocr tesseract-ocr-heb
@@ -279,6 +314,7 @@ tesseract --version
 ```
 
 #### Permission Errors
+
 ```bash
 # Check file permissions
 chmod 644 input.pdf
@@ -288,6 +324,7 @@ python pdf-ocr-processor.py --mode force /path/to/documents/
 ```
 
 #### Large File Processing
+
 ```bash
 # For very large PDFs, consider:
 # 1. Using CLI mode for faster processing
@@ -298,11 +335,13 @@ python pdf-ocr-processor.py --mode force /path/to/documents/
 ### Performance Optimization
 
 #### For Faster Processing
+
 - Use `--mode cli` for existing text documents
 - Disable recursive search with `--no-recursive` for flat directories
 - Process files individually rather than in large batches
 
 #### For Better Quality
+
 - Use `--mode force` for complete text replacement
 - Ensure proper language packs are installed
 - Check OCR settings in the script configuration
@@ -310,6 +349,7 @@ python pdf-ocr-processor.py --mode force /path/to/documents/
 ## 📊 Processing Statistics
 
 The tool provides detailed statistics:
+
 - **Processed Files**: Successfully OCR'd documents
 - **Skipped Files**: Files already containing OCR text
 - **Error Files**: Files that failed processing with specific error details
@@ -317,6 +357,7 @@ The tool provides detailed statistics:
 ## 🔧 Configuration
 
 ### Default OCR Settings
+
 - **Page Segmentation Mode**: `--psm 3` (automatic page segmentation)
 - **DPI Oversampling**: 300 DPI for better quality
 - **Output Format**: PDF/A for archival compliance
@@ -329,21 +370,25 @@ The script uses sensible defaults but can be modified by editing the `get_ocr_se
 ## 📝 Use Cases
 
 ### Document Digitization
+
 - Convert scanned documents to searchable PDFs
 - Process archival materials
 - Create accessible documents from images
 
 ### Forensic Analysis
+
 - Extract text for investigation purposes
 - Analyze document structure and layout
 - Create visual representations of text regions
 
 ### Batch Processing
+
 - Process large collections of documents
 - Automate document conversion workflows
 - Archive and organize document collections
 
 ### Multi-language Documents
+
 - Process Hebrew/English mixed documents
 - Handle international document collections
 - Support for custom language combinations

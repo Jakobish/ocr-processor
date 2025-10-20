@@ -3,7 +3,6 @@ Enterprise OCR Structured Logging System
 Provides comprehensive logging with rotation, remote capabilities, and structured output
 """
 import os
-import json
 import logging
 import logging.handlers
 from typing import Dict, Any, Optional
@@ -11,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 import structlog
 from structlog.dev import ConsoleRenderer
-from structlog.processors import JSONRenderer, StackInfoRenderer, format_exc_info
+from structlog import JSONRenderer
 import requests
 import time
 from config import config
@@ -228,66 +227,71 @@ class OCRLogManager:
 
     def log_processing_start(self, job_id: str, file_path: str, mode: str, **kwargs):
         """Log processing start event"""
-        self.logger.info(
-            "Processing started",
-            job_id=job_id,
-            file_path=file_path,
-            mode=mode,
-            event_type="processing_start",
-            **kwargs
-        )
+        if self.logger is not None:
+            self.logger.info(
+                "Processing started",
+                job_id=job_id,
+                file_path=file_path,
+                mode=mode,
+                event_type="processing_start",
+                **kwargs
+            )
 
     def log_processing_complete(self, job_id: str, file_path: str, success: bool,
                               processing_time: float, **kwargs):
         """Log processing completion event"""
-        self.logger.info(
-            "Processing completed",
-            job_id=job_id,
-            file_path=file_path,
-            success=success,
-            processing_time=processing_time,
-            event_type="processing_complete",
-            **kwargs
-        )
+        if self.logger is not None:
+            self.logger.info(
+                "Processing completed",
+                job_id=job_id,
+                file_path=file_path,
+                success=success,
+                processing_time=processing_time,
+                event_type="processing_complete",
+                **kwargs
+            )
 
     def log_error(self, error: Exception, context: Dict[str, Any], **kwargs):
         """Log error with context"""
-        self.logger.error(
-            "Error occurred",
-            error=str(error),
-            error_type=type(error).__name__,
-            event_type="error",
-            **context,
-            **kwargs
-        )
+        if self.logger is not None:
+            self.logger.error(
+                "Error occurred",
+                error=str(error),
+                error_type=type(error).__name__,
+                event_type="error",
+                **context,
+                **kwargs
+            )
 
     def log_performance_metric(self, operation: str, duration: float,
-                             file_size: Optional[int] = None, **kwargs):
+                              file_size: Optional[int] = None, **kwargs):
         """Log performance metrics"""
-        # Also log to performance-specific logger
-        perf_logger = logging.getLogger("ocr.performance")
+        if self.logger is not None:
+            # Also log to performance-specific logger using structlog
+            perf_logger = structlog.get_logger("ocr.performance")
 
-        perf_logger.info(
-            f"Performance: {operation}",
-            operation=operation,
-            duration=duration,
-            file_size=file_size,
-            **kwargs
-        )
+            perf_logger.info(
+                f"Performance: {operation}",
+                operation=operation,
+                duration=duration,
+                file_size=file_size,
+                **kwargs
+            )
 
     def log_batch_operation(self, operation: str, total_files: int,
-                          success_count: int, failure_count: int, **kwargs):
+                           success_count: int, failure_count: int, **kwargs):
         """Log batch operation statistics"""
-        self.logger.info(
-            "Batch operation completed",
-            operation=operation,
-            total_files=total_files,
-            success_count=success_count,
-            failure_count=failure_count,
-            success_rate=success_count / total_files if total_files > 0 else 0,
-            event_type="batch_complete",
-            **kwargs
-        )
+        if self.logger is not None:
+            self.logger.info(
+                "Batch operation completed",
+                operation=operation,
+                total_files=total_files,
+                success_count=success_count,
+                failure_count=failure_count,
+                success_rate=success_count / total_files if total_files > 0 else 0,
+                event_type="batch_complete",
+                **kwargs
+            )
 
     def log_system_info(self):
         """Log system information for debugging"""
@@ -306,11 +310,12 @@ class OCRLogManager:
             }
         }
 
-        self.logger.info(
-            "System information",
-            event_type="system_info",
-            **system_info
-        )
+        if self.logger is not None:
+            self.logger.info(
+                "System information",
+                event_type="system_info",
+                **system_info
+            )
 
     def get_log_files(self) -> Dict[str, Path]:
         """Get paths to all log files"""
@@ -334,18 +339,20 @@ class OCRLogManager:
             try:
                 if log_file.stat().st_mtime < cutoff_date:
                     log_file.unlink()
-                    self.logger.info(
-                        "Cleaned up old log file",
-                        file_path=str(log_file),
-                        event_type="log_cleanup"
-                    )
+                    if self.logger is not None:
+                        self.logger.info(
+                            "Cleaned up old log file",
+                            file_path=str(log_file),
+                            event_type="log_cleanup"
+                        )
             except Exception as e:
-                self.logger.warning(
-                    "Failed to cleanup log file",
-                    file_path=str(log_file),
-                    error=str(e),
-                    event_type="log_cleanup_error"
-                )
+                if self.logger is not None:
+                    self.logger.warning(
+                        "Failed to cleanup log file",
+                        file_path=str(log_file),
+                        error=str(e),
+                        event_type="log_cleanup_error"
+                    )
 
 
 # Context manager for operation timing
@@ -369,7 +376,10 @@ class OperationTimer:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        duration = time.time() - self.start_time
+        if self.start_time is not None:
+            duration = time.time() - self.start_time
+        else:
+            duration = 0.0
 
         if exc_type:
             self.logger.error(
@@ -409,4 +419,10 @@ def log_operation(operation: str, **context):
 
 
 # Global logger manager instance
-log_manager = OCRLogManager(config)
+try:
+    log_manager = OCRLogManager(config)
+except Exception as e:
+    print(f"Logger initialization failed ({type(e).__name__}): {e}\n"
+          "Possible causes: misconfigured 'config', missing dependencies, or file permission issues. "
+          "Check your configuration and environment.")
+    log_manager = None
