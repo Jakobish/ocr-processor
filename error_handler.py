@@ -5,10 +5,10 @@ Provides comprehensive error handling, retry mechanisms, and recovery strategies
 import time
 import logging
 import functools
-from typing import Dict, Any, Optional, Callable, Type, Union
+from typing import Dict, Any, Optional, Callable
 from enum import Enum
-from dataclasses import dataclass
-from datetime import datetime, timedelta
+from dataclasses import dataclass, field
+from datetime import datetime
 import json
 import smtplib
 from email.mime.text import MimeText

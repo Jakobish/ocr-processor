@@ -9,13 +9,12 @@ from email.mime.text import MimeText
 from email.mime.multipart import MimeMultipart
 from email.mime.base import MimeBase
 from email import encoders
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 from dataclasses import dataclass
 from datetime import datetime
 import threading
 from pathlib import Path
 from logger import log_manager
-from config import config
 
 
 @dataclass

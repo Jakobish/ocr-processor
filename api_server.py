@@ -5,15 +5,12 @@ Provides HTTP API endpoints for job management, monitoring, and integration
 from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel, Field, validator
 from typing import Dict, Any, Optional, List
 from pathlib import Path
 import uvicorn
 import threading
-import asyncio
 from datetime import datetime
-import json
 from logger import log_manager
 from config import config
 from progress_tracker import progress_tracker
