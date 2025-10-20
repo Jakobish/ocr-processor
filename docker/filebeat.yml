@@ -1,0 +1,48 @@
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /var/log/ocr/*.log
+  json.keys_under_root: true
+  json.overwrite_keys: true
+
+- type: log
+  enabled: true
+  paths:
+    - /var/log/nginx/*.log
+  fields:
+    service: nginx
+  fields_under_root: true
+
+# Output configuration
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  index: "ocr-logs-%{+yyyy.MM.dd}"
+
+# Setup template configuration
+setup.template.name: "ocr-logs"
+setup.template.pattern: "ocr-logs-*"
+
+# Alternative: Output to file (uncomment if you don't have Elasticsearch)
+# output.file:
+#   path: "/tmp/filebeat"
+#   filename: filebeat
+#   rotate_every_kb: 10000
+#   number_of_files: 5
+
+# Processors
+processors:
+- add_host_metadata:
+    when.not.contains.tags: forwarded
+- add_cloud_metadata: ~
+- add_docker_metadata: ~
+- add_kubernetes_metadata: ~
+
+# Logging
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644

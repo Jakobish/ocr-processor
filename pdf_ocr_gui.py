@@ -397,7 +397,7 @@ class PDFOCRGUI:
             self.log_message(f"🔄 Processing: {pdf_file.name}")
 
             # Run OCR
-            result = ocrmypdf.ocr(
+            ocrmypdf.ocr(
                 pdf_file, pdf_output,
                 sidecar=sidecar_txt, hocr=hocr_output,
                 **ocr_settings
@@ -490,7 +490,7 @@ class GUIHandler(logging.Handler):
 
 def main():
     root = tk.Tk()
-    app = PDFOCRGUI(root)
+    PDFOCRGUI(root)
     root.mainloop()
 
 if __name__ == "__main__":

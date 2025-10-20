@@ -63,7 +63,7 @@ COPY . .
 RUN echo '#!/bin/bash\n\
 if [ "$1" = "api" ]; then\n\
     echo "Starting OCR API Server..."\n\
-    python -m uvicorn api_server:get_api_server(config).app --host 0.0.0.0 --port 8000\n\
+    python -m uvicorn api_server:get_api_server"(config)".app --host 0.0.0.0 --port 8000\n\
 elif [ "$1" = "worker" ]; then\n\
     echo "Starting OCR Worker..."\n\
     python ocr_combined.py "$@"\n\

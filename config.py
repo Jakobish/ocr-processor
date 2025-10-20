@@ -7,8 +7,6 @@ import json
 from pathlib import Path
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, field
-from dotenv import python-dotenv
-
 
 @dataclass
 class OCRConfig:

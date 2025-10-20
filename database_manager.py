@@ -2,14 +2,14 @@
 Enterprise OCR Database Integration
 Provides job tracking, audit trails, and persistent storage for enterprise operations
 """
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean, Float, JSON, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean, Float, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
 from sqlalchemy.sql import func
 from sqlalchemy.types import TypeDecorator
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import threading
 from contextlib import contextmanager
