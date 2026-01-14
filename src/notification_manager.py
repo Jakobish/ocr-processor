@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 import threading
 from pathlib import Path
-from .logger import log_manager
+from logger import log_manager
 
 
 def safe_log(level: str, message: str, **kwargs):

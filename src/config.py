@@ -201,8 +201,8 @@ class OCRConfig:
             'output_type': 'pdfa',
             'progress_bar': not self.enable_api,  # Disable progress bar for API mode
             'skip_big': False,
-            'fast_web_view': True,
-            'optimize_images': True,
+
+
             'clean': True,
             'lang': language or self.default_language,
             'clean_final': True,

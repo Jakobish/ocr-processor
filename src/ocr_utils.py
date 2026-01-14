@@ -17,9 +17,9 @@ import fitz  # PyMuPDF
 import ocrmypdf
 from ocrmypdf.exceptions import InputFileError, PriorOcrFoundError
 
-from .logger import log_manager
-from .error_handler import get_error_handler, ErrorContext, ValidationError
-from .config import config
+from logger import log_manager
+from error_handler import get_error_handler, ErrorContext, ValidationError
+from config import config
 
 
 class FileUtils:
@@ -207,8 +207,8 @@ class OCRUtils:
             'output_type': 'pdfa',
             'progress_bar': True,
             'skip_big': False,
-            'fast_web_view': True,
-            'optimize_images': True,
+
+
             'clean': True,
             'lang': lang,
             'clean_final': True,
@@ -331,7 +331,6 @@ class OCRUtils:
             # Define output files
             pdf_output = output_base / "ocr_output.pdf"
             sidecar_txt = output_base / "ocr_output.txt"
-            hocr_output = output_base / "ocr_output.hocr"
             log_file = output_base / "ocr_log.txt"
 
             # Get OCR settings for the mode
@@ -357,20 +356,15 @@ class OCRUtils:
                 pdf_file,
                 pdf_output,
                 sidecar=sidecar_txt,
-                hocr=hocr_output,
                 **ocr_settings
             )
 
             print(f"✅ OCR completed for {pdf_file.name}")
             print(f"📄 PDF with OCR: {pdf_output}")
             print(f"📝 Extracted text: {sidecar_txt}")
-            print(f"📐 HOCR layout: {hocr_output}")
             print(f"📜 Log file: {log_file}")
 
-            # Generate visual highlights for force and visual modes
-            if mode in ["force", "visual"] and hocr_output.exists():
-                vis_folder = output_base / "visual"
-                OCRUtils.visualize_hocr(hocr_output, pdf_file, vis_folder)
+
 
             # Create zip file for force mode
             if mode == "force":

@@ -12,12 +12,12 @@ import uvicorn
 import threading
 from datetime import datetime
 from sqlalchemy import text
-from .logger import log_manager
-from .config import config
-from .progress_tracker import progress_tracker, JobPriority
-from .security_validator import security_validator
-from .notification_manager import get_notification_manager
-from .database_manager import get_database_manager
+from logger import log_manager
+from config import config
+from progress_tracker import progress_tracker, JobPriority
+from security_validator import security_validator
+from notification_manager import get_notification_manager
+from database_manager import get_database_manager
 
 
 # Pydantic models for API

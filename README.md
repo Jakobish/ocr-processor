@@ -16,13 +16,13 @@ We're not just another OCR tool. We've built a **complete document processing ec
 
 ### 🎯 What Makes Us Different
 
-| What You Get | Why It Matters |
-|--------------|----------------|
-| **One-Click Processing** | Drop a file, get searchable text. No expertise required. |
-| **Multi-Language Magic** | Hebrew, English, French, German, Spanish—handle mixed-language documents effortlessly |
-| **Three Processing Modes** | Choose fast (cli), thorough (force), or visual analysis—whatever your workflow needs |
-| **Enterprise-Ready** | REST API, job queuing, progress tracking, audit logs—built for production environments |
-| **Batch Processing** | Process hundreds of documents at once with recursive directory scanning |
+| What You Get               | Why It Matters                                                                         |
+|----------------------------|----------------------------------------------------------------------------------------|
+| **One-Click Processing**   | Drop a file, get searchable text. No expertise required.                               |
+| **Multi-Language Magic**   | Hebrew, English, French, German, Spanish—handle mixed-language documents effortlessly  |
+| **Three Processing Modes** | Choose fast (cli), thorough (force), or visual analysis—whatever your workflow needs   |
+| **Enterprise-Ready**       | REST API, job queuing, progress tracking, audit logs—built for production environments |
+| **Batch Processing**       | Process hundreds of documents at once with recursive directory scanning                |
 
 ### 📊 By The Numbers
 
@@ -43,12 +43,17 @@ We're not just another OCR tool. We've built a **complete document processing ec
 # Clone and launch
 git clone <repository-url>
 cd ocr-processor
+
+# Create data directories and place your PDFs in data/input/
+mkdir -p data/input data/output data/archive
+
+# Launch services
 docker-compose up -d
 
-# Process your first document
+# Process your first document (replace filename.pdf with your actual file)
 curl -X POST http://localhost:8000/jobs \
   -H "Content-Type: application/json" \
-  -d '{"input_path": "/path/to/your/document.pdf", "mode": "cli"}'
+  -d '{"input_path": "/app/data/input/filename.pdf", "mode": "cli"}'
 ```
 
 ### Python CLI
@@ -143,11 +148,11 @@ Point-and-click interface for non-technical users. Drag, drop, process. That's i
 
 ## 🔧 Processing Modes Explained
 
-| Mode | Speed | What It Does | Best For |
-|------|-------|--------------|----------|
-| **CLI** ⚡ | Fastest | Skips existing text, preserves layout | Quick enhancement, preserving existing text |
-| **Force** 💪 | Thorough | Forces OCR on every page | Complete text replacement |
-| **Visual** 👁️ | Moderate | Creates bounding box overlays | Layout analysis, forensic work |
+| Mode           | Speed    | What It Does                          | Best For                                    |
+|----------------|----------|---------------------------------------|---------------------------------------------|
+| **CLI** ⚡      | Fastest  | Skips existing text, preserves layout | Quick enhancement, preserving existing text |
+| **Force** 💪   | Thorough | Forces OCR on every page              | Complete text replacement                   |
+| **Visual** 👁️ | Moderate | Creates bounding box overlays         | Layout analysis, forensic work              |
 
 ---
 
@@ -155,13 +160,11 @@ Point-and-click interface for non-technical users. Drag, drop, process. That's i
 
 Each processed document produces:
 
-```
+```text
 output_folder/
 ├── ocr_output.pdf      # ✅ Searchable PDF/A (archival quality)
 ├── ocr_output.txt      # 📝 Plain text extraction
-├── ocr_output.hocr     # 📐 Spatial layout info (for visual analysis)
 ├── ocr_log.txt         # 📊 Processing details
-├── visual/             # 🖼️ Bounding box images (force/visual modes)
 └── archive.zip         # 📦 Compressed output (force mode)
 ```
 
@@ -211,14 +214,14 @@ Built for scale, designed for reliability:
 
 We speak your language—literally:
 
-| Language | Code | Notes |
-|----------|------|-------|
-| Hebrew + English | `heb+eng` | Default, bi-directional support |
-| English | `eng` | Standard US/UK |
-| French | `fra` | Plus combinations |
-| German | `deu` | Plus combinations |
-| Spanish | `spa` | Plus combinations |
-| ...and 45+ more | Any Tesseract code | Custom combinations |
+| Language         | Code               | Notes                           |
+|------------------|--------------------|---------------------------------|
+| Hebrew + English | `heb+eng`          | Default, bi-directional support |
+| English          | `eng`              | Standard US/UK                  |
+| French           | `fra`              | Plus combinations               |
+| German           | `deu`              | Plus combinations               |
+| Spanish          | `spa`              | Plus combinations               |
+| ...and 45+ more  | Any Tesseract code | Custom combinations             |
 
 **Mix and match:** `heb+eng+fra+deu` for multilingual documents
 
@@ -226,12 +229,12 @@ We speak your language—literally:
 
 ## 📖 Documentation & Resources
 
-| Resource | Description |
-|----------|-------------|
-| [📚 Complete Documentation](docs/COMPLETE_DOCUMENTATION.md) | In-depth technical reference |
-| [🚀 Deployment Guide](docs/DEPLOYMENT.md) | Production deployment instructions |
-| [👨‍💼 Admin Guide](docs/ADMIN_GUIDE.md) | System administration & monitoring |
-| [🔗 API Documentation](http://localhost:8000/docs) | Interactive API docs (when running) |
+| Resource                                                    | Description                         |
+|-------------------------------------------------------------|-------------------------------------|
+| [📚 Complete Documentation](docs/COMPLETE_DOCUMENTATION.md) | In-depth technical reference        |
+| [🚀 Deployment Guide](docs/DEPLOYMENT.md)                   | Production deployment instructions  |
+| [👨‍💼 Admin Guide](docs/ADMIN_GUIDE.md)                    | System administration & monitoring  |
+| [🔗 API Documentation](http://localhost:8000/docs)          | Interactive API docs (when running) |
 
 ---
 
@@ -271,4 +274,4 @@ Your documents are waiting to be unlocked. 🔓
 
 ---
 
-**Built with ❤️ by developers who understand document pain**
+### **Built with ❤️ by developers who understand document pain**

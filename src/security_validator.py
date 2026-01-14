@@ -12,7 +12,7 @@ from dataclasses import dataclass
 import re
 import shutil
 from datetime import datetime
-from .logger import log_manager
+from logger import log_manager
 
 
 @dataclass

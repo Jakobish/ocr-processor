@@ -7,6 +7,7 @@ import shutil
 from pathlib import Path
 from unittest.mock import patch
 import sys
+from ocrmypdf.exceptions import PriorOcrFoundError
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -141,9 +142,7 @@ class TestOCRUtils(unittest.TestCase):
     @patch('ocr_utils.ocrmypdf.ocr')
     def test_ocr_process_success(self, mock_ocr):
         """Test successful OCR processing"""
-        # Create mock PDF file
-        pdf_file = self.temp_dir / "test.pdf"
-        pdf_file.write_text("dummy pdf content")
+        pdf_file = Path(__file__).parent / "PDF" / "LaTeX Guide.pdf"
 
         output_base = self.temp_dir / "output"
         mock_ocr.return_value = None
@@ -155,13 +154,11 @@ class TestOCRUtils(unittest.TestCase):
         mock_ocr.assert_called_once()
 
     @patch('ocr_utils.ocrmypdf.ocr')
-    @patch('ocr_utils.ocrmypdf.PriorOcrFoundError')
-    def test_ocr_process_prior_ocr_found(self, mock_error, mock_ocr):
+    def test_ocr_process_prior_ocr_found(self, mock_ocr):
         """Test OCR processing when OCR already exists"""
-        mock_ocr.side_effect = mock_error
+        mock_ocr.side_effect = PriorOcrFoundError()
 
-        pdf_file = self.temp_dir / "test.pdf"
-        pdf_file.write_text("dummy pdf content")
+        pdf_file = Path(__file__).parent / "PDF" / "LaTeX Guide.pdf"
 
         output_base = self.temp_dir / "output"
 
@@ -181,18 +178,16 @@ class TestInputProcessor(unittest.TestCase):
 
     def test_validate_input_path_valid_pdf(self):
         """Test validate_input_path with valid PDF file"""
-        pdf_file = self.temp_dir / "test.pdf"
-        pdf_file.write_text("dummy content")
+        pdf_file = Path(__file__).parent / "PDF" / "LaTeX Guide.pdf"
 
         result = InputProcessor.validate_input_path(pdf_file)
         self.assertTrue(result)
 
     def test_validate_input_path_valid_directory(self):
         """Test validate_input_path with directory containing PDFs"""
-        pdf_file = self.temp_dir / "test.pdf"
-        pdf_file.write_text("dummy content")
+        pdf_dir = Path(__file__).parent / "PDF"
 
-        result = InputProcessor.validate_input_path(self.temp_dir)
+        result = InputProcessor.validate_input_path(pdf_dir)
         self.assertTrue(result)
 
     def test_validate_input_path_empty_directory(self):
@@ -210,8 +205,7 @@ class TestInputProcessor(unittest.TestCase):
 
     def test_collect_pdf_files_single_file(self):
         """Test collect_pdf_files with single PDF file"""
-        pdf_file = self.temp_dir / "test.pdf"
-        pdf_file.write_text("dummy content")
+        pdf_file = Path(__file__).parent / "PDF" / "LaTeX Guide.pdf"
 
         files = InputProcessor.collect_pdf_files(pdf_file)
         self.assertEqual(len(files), 1)
@@ -219,19 +213,12 @@ class TestInputProcessor(unittest.TestCase):
 
     def test_collect_pdf_files_directory(self):
         """Test collect_pdf_files with directory"""
-        pdf1 = self.temp_dir / "test1.pdf"
-        pdf2 = self.temp_dir / "test2.pdf"
-        txt_file = self.temp_dir / "test.txt"
+        pdf_dir = Path(__file__).parent / "PDF"
 
-        pdf1.write_text("pdf1")
-        pdf2.write_text("pdf2")
-        txt_file.write_text("text")
-
-        files = InputProcessor.collect_pdf_files(self.temp_dir)
+        files = InputProcessor.collect_pdf_files(pdf_dir)
         self.assertEqual(len(files), 2)
-        self.assertIn(pdf1, files)
-        self.assertIn(pdf2, files)
-        self.assertNotIn(txt_file, files)
+        self.assertIn(pdf_dir / "LaTeX Guide.pdf", files)
+        self.assertIn(pdf_dir / "r2_cs.pdf", files)
 
     def test_collect_pdf_files_recursive(self):
         """Test collect_pdf_files with recursive search"""

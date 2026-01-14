@@ -13,7 +13,7 @@ from structlog.dev import ConsoleRenderer
 from structlog.processors import JSONRenderer
 import requests
 import time
-from .config import config
+from config import config
 
 
 class RemoteLogHandler(logging.Handler):

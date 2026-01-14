@@ -14,8 +14,8 @@ import json
 import threading
 from contextlib import contextmanager
 from pathlib import Path
-from .logger import log_manager
-from .config import config
+from logger import log_manager
+from config import config
 
 
 Base = declarative_base()

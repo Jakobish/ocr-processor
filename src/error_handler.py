@@ -463,7 +463,7 @@ def handle_ocr_errors(operation: str, context: Optional[ErrorContext] = None):
                     error_handler = func.__self__.error_handler
                 else:
                     # Fallback to global error handler
-                    from .config import config
+                    from config import config
                     error_handler = ErrorHandler(config)
 
                 success = error_handler.handle_error(e, error_context)
