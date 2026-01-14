@@ -16,7 +16,6 @@
 #   - Output saved under: ocr_visual/<filename>_<timestamp>/
 #   - Includes PDF, HOCR, sidecar text, and PNGs with highlights
 #############################################
-import os
 import sys
 import subprocess
 from pathlib import Path

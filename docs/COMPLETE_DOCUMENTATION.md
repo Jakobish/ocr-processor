@@ -42,7 +42,7 @@ The OCR Processor Enterprise is a comprehensive PDF OCR (Optical Character Recog
 ### Processing Modes
 
 | Mode     | Description                                         | Use Case              |
-| -------- | --------------------------------------------------- | --------------------- |
+|----------|-----------------------------------------------------|-----------------------|
 | `cli`    | Fast processing that preserves existing text        | Quick OCR enhancement |
 | `force`  | Complete OCR with visual highlights and compression | Full text replacement |
 | `visual` | Processing with bounding box overlays               | Layout analysis       |
@@ -221,7 +221,7 @@ Input validation and security:
 ### System Requirements
 
 | Requirement | Minimum     | Recommended   |
-| ----------- | ----------- | ------------- |
+|-------------|-------------|---------------|
 | OS          | Linux/macOS | Ubuntu 20.04+ |
 | RAM         | 4 GB        | 8 GB          |
 | Storage     | 10 GB       | 50 GB SSD     |
@@ -296,7 +296,7 @@ python -m src.api_server
 ### Environment Variables
 
 | Variable                   | Description                | Default   | Required |
-| -------------------------- | -------------------------- | --------- | -------- |
+|----------------------------|----------------------------|-----------|----------|
 | `OCR_LOG_LEVEL`            | Logging level              | INFO      | No       |
 | `OCR_DEFAULT_LANGUAGE`     | Default OCR language       | heb+eng   | No       |
 | `OCR_DEFAULT_MODE`         | Default processing mode    | cli       | No       |
@@ -397,7 +397,7 @@ python cli/ocr_combined.py --lang eng+fra+deu document.pdf
 #### Command Line Options
 
 | Option           | Description                   | Default          |
-| ---------------- | ----------------------------- | ---------------- |
+|------------------|-------------------------------|------------------|
 | `input_path`     | PDF file or directory         | Required         |
 | `--mode`         | Processing mode               | cli              |
 | `--lang`         | Language(s) for OCR           | heb+eng          |
@@ -500,7 +500,7 @@ priority: normal
 #### OCRJobCreate
 
 | Field               | Type    | Required | Description                              |
-| ------------------- | ------- | -------- | ---------------------------------------- |
+|---------------------|---------|----------|------------------------------------------|
 | `input_path`        | string  | Yes      | Path to PDF file or directory            |
 | `mode`              | string  | No       | Processing mode (cli, force, visual)     |
 | `language`          | string  | No       | Language for OCR                         |
@@ -571,7 +571,7 @@ priority: normal
 **Common HTTP Status Codes:**
 
 | Code | Description           |
-| ---- | --------------------- |
+|------|-----------------------|
 | 200  | Success               |
 | 201  | Created               |
 | 400  | Bad Request           |
@@ -833,7 +833,7 @@ rsync -avz /var/ocr/output/ backup:/path/to/backup/
 ### Scaling Guidelines
 
 | Load Level                | Workers | CPU | RAM  | Storage |
-| ------------------------- | ------- | --- | ---- | ------- |
+|---------------------------|---------|-----|------|---------|
 | Light (<10 files/day)     | 1       | 2   | 4GB  | 50GB    |
 | Medium (10-100 files/day) | 2-3     | 4   | 8GB  | 200GB   |
 | Heavy (100+ files/day)    | 4+      | 8   | 16GB | 500GB+  |
