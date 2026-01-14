@@ -2,6 +2,7 @@
 Enterprise OCR Utilities Library
 Provides centralized, reusable utilities for OCR processing operations
 """
+
 import os
 import shutil
 import logging
@@ -40,7 +41,9 @@ class FileUtils:
             return path
         except Exception as e:
             error_handler = get_error_handler(config)
-            error_handler.handle_error(e, ErrorContext(operation="ensure_dir", file_path=str(path)))
+            error_handler.handle_error(
+                e, ErrorContext(operation="ensure_dir", file_path=str(path))
+            )
             raise
 
     @staticmethod
@@ -60,10 +63,13 @@ class FileUtils:
             return False
         except Exception as e:
             error_handler = get_error_handler(config)
-            error_handler.handle_error(e, ErrorContext(
-                operation="filecompare",
-                metadata={"file_a": str(a), "file_b": str(b)}
-            ))
+            error_handler.handle_error(
+                e,
+                ErrorContext(
+                    operation="filecompare",
+                    metadata={"file_a": str(a), "file_b": str(b)},
+                ),
+            )
             return False
 
     @staticmethod
@@ -90,17 +96,16 @@ class FileUtils:
                     "Folder zipped successfully",
                     folder_path=str(folder_path),
                     zip_path=str(zip_path),
-                    event_type="folder_zipped"
+                    event_type="folder_zipped",
                 )
 
             return zip_path
 
         except Exception as e:
             error_handler = get_error_handler(config)
-            error_handler.handle_error(e, ErrorContext(
-                operation="zip_folder",
-                file_path=str(folder_path)
-            ))
+            error_handler.handle_error(
+                e, ErrorContext(operation="zip_folder", file_path=str(folder_path))
+            )
             raise
 
     @staticmethod
@@ -116,7 +121,9 @@ class FileUtils:
         """
         try:
             # Create relative path structure in archive
-            archive_filename = archive_dir / source_file.relative_to(source_file.parent.parent)
+            archive_filename = archive_dir / source_file.relative_to(
+                source_file.parent.parent
+            )
             archive_filename.parent.mkdir(parents=True, exist_ok=True)
 
             if not FileUtils.filecompare(source_file, archive_filename):
@@ -128,18 +135,21 @@ class FileUtils:
                         "File archived",
                         source_file=str(source_file),
                         archive_file=str(archive_filename),
-                        event_type="file_archived"
+                        event_type="file_archived",
                     )
 
             return archive_filename
 
         except Exception as e:
             error_handler = get_error_handler(config)
-            error_handler.handle_error(e, ErrorContext(
-                operation="archive_file",
-                file_path=str(source_file),
-                metadata={"archive_dir": str(archive_dir)}
-            ))
+            error_handler.handle_error(
+                e,
+                ErrorContext(
+                    operation="archive_file",
+                    file_path=str(source_file),
+                    metadata={"archive_dir": str(archive_dir)},
+                ),
+            )
             raise
 
 
@@ -162,11 +172,7 @@ class CommandUtils:
         try:
             print(f"🔧 Running: {cmd}")
             result = subprocess.run(
-                cmd,
-                shell=True,
-                check=True,
-                capture_output=True,
-                text=True
+                cmd, shell=True, check=True, capture_output=True, text=True
             )
             return result.stdout + result.stderr
 
@@ -178,7 +184,7 @@ class CommandUtils:
                     command=cmd,
                     return_code=e.returncode,
                     stderr=e.stderr,
-                    event_type="command_failed"
+                    event_type="command_failed",
                 )
             raise
 
@@ -198,39 +204,43 @@ class OCRUtils:
             Dict[str, Any]: OCR settings dictionary
         """
         # Use config's get_ocr_settings if available, otherwise fallback to local implementation
-        if hasattr(config, 'get_ocr_settings'):
+        if hasattr(config, "get_ocr_settings"):
             return config.get_ocr_settings(mode, lang)
 
         # Fallback implementation
         base_settings = {
-            'deskew': True,
-            'output_type': 'pdfa',
-            'progress_bar': True,
-            'skip_big': False,
-
-
-            'clean': True,
-            'lang': lang,
-            'clean_final': True,
-            'oversample': 300,
-            'jobs': min(config.max_concurrent_jobs if hasattr(config, 'max_concurrent_jobs') else 4,
-                       os.cpu_count() or 1),
-            'tesseract_config': '--psm 3',
+            "deskew": True,
+            "output_type": "pdfa",
+            "progress_bar": True,
+            "skip_big": False,
+            "clean": True,
+            "lang": lang,
+            "clean_final": True,
+            "oversample": 300,
+            "jobs": min(
+                config.max_concurrent_jobs
+                if hasattr(config, "max_concurrent_jobs")
+                else 4,
+                os.cpu_count() or 1,
+            ),
+            "tesseract_config": "--psm 3",
         }
 
         if mode == "cli":
-            base_settings.update({'force_ocr': False, 'skip_text': True})
+            base_settings.update({"force_ocr": False, "skip_text": True})
         elif mode == "force":
-            base_settings.update({'force_ocr': True, 'skip_text': False})
+            base_settings.update({"force_ocr": True, "skip_text": False})
         elif mode == "visual":
-            base_settings.update({'force_ocr': False, 'skip_text': True})
+            base_settings.update({"force_ocr": False, "skip_text": True})
         else:
             raise ValueError(f"Unknown mode: {mode}")
 
         return base_settings
 
     @staticmethod
-    def visualize_hocr(hocr_path: Path, original_pdf: Path, vis_output_folder: Path) -> None:
+    def visualize_hocr(
+        hocr_path: Path, original_pdf: Path, vis_output_folder: Path
+    ) -> None:
         """Generate visual highlights from HOCR file.
 
         Args:
@@ -242,7 +252,7 @@ class OCRUtils:
             print("🖼️ Generating visual highlight from HOCR...")
 
             doc = fitz.open(original_pdf)
-            soup = BeautifulSoup(hocr_path.read_text(encoding='utf-8'), 'html.parser')
+            soup = BeautifulSoup(hocr_path.read_text(encoding="utf-8"), "html.parser")
 
             words = soup.find_all("span", class_="ocrx_word")
             coords_per_page = {}
@@ -291,24 +301,32 @@ class OCRUtils:
                     pdf_path=str(original_pdf),
                     output_folder=str(vis_output_folder),
                     pages_processed=len(coords_per_page),
-                    event_type="hocr_visualization_complete"
+                    event_type="hocr_visualization_complete",
                 )
 
         except Exception as e:
             error_handler = get_error_handler(config)
-            error_handler.handle_error(e, ErrorContext(
-                operation="visualize_hocr",
-                file_path=str(hocr_path),
-                metadata={
-                    "original_pdf": str(original_pdf),
-                    "vis_output_folder": str(vis_output_folder)
-                }
-            ))
+            error_handler.handle_error(
+                e,
+                ErrorContext(
+                    operation="visualize_hocr",
+                    file_path=str(hocr_path),
+                    metadata={
+                        "original_pdf": str(original_pdf),
+                        "vis_output_folder": str(vis_output_folder),
+                    },
+                ),
+            )
             raise
 
     @staticmethod
-    def ocr_process(pdf_file: Path, output_base: Path, mode: str, lang: str = "heb+eng",
-                   archive_dir: Optional[Path] = None) -> bool:
+    def ocr_process(
+        pdf_file: Path,
+        output_base: Path,
+        mode: str,
+        lang: str = "heb+eng",
+        archive_dir: Optional[Path] = None,
+    ) -> bool:
         """Process a PDF file with OCR based on specified mode.
 
         Args:
@@ -345,26 +363,21 @@ class OCRUtils:
                 file_logger.removeHandler(handler)
 
             # Add file handler for this specific file
-            handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
-            handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+            handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
+            handler.setFormatter(
+                logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+            )
             file_logger.addHandler(handler)
 
             print(f"🔄 Processing: {pdf_file.name}")
 
             # Run OCR using ocrmypdf as a library
-            ocrmypdf.ocr(
-                pdf_file,
-                pdf_output,
-                sidecar=sidecar_txt,
-                **ocr_settings
-            )
+            ocrmypdf.ocr(pdf_file, pdf_output, sidecar=sidecar_txt, **ocr_settings)
 
             print(f"✅ OCR completed for {pdf_file.name}")
             print(f"📄 PDF with OCR: {pdf_output}")
             print(f"📝 Extracted text: {sidecar_txt}")
             print(f"📜 Log file: {log_file}")
-
-
 
             # Create zip file for force mode
             if mode == "force":
@@ -379,7 +392,7 @@ class OCRUtils:
                     output_base=str(output_base),
                     mode=mode,
                     language=lang,
-                    event_type="ocr_processing_complete"
+                    event_type="ocr_processing_complete",
                 )
 
             return True
@@ -390,7 +403,7 @@ class OCRUtils:
                 log_manager.logger.info(
                     "OCR skipped - already contains text",
                     pdf_file=str(pdf_file),
-                    event_type="ocr_skipped_existing"
+                    event_type="ocr_skipped_existing",
                 )
             return False
         except InputFileError as e:
@@ -400,7 +413,7 @@ class OCRUtils:
                     "OCR input file error",
                     pdf_file=str(pdf_file),
                     error=str(e),
-                    event_type="ocr_input_error"
+                    event_type="ocr_input_error",
                 )
             return False
         except Exception as e:
@@ -410,7 +423,7 @@ class OCRUtils:
                     "OCR processing error",
                     pdf_file=str(pdf_file),
                     error=str(e),
-                    event_type="ocr_processing_error"
+                    event_type="ocr_processing_error",
                 )
             return False
 
@@ -457,8 +470,13 @@ class InputProcessor:
             raise ValidationError(f"Invalid input path: {input_path}")
 
     @staticmethod
-    def process_input(input_path: Path, mode: str, lang: str = "heb+eng",
-                     archive_dir: Optional[Path] = None, recursive: bool = True) -> tuple[int, int]:
+    def process_input(
+        input_path: Path,
+        mode: str,
+        lang: str = "heb+eng",
+        archive_dir: Optional[Path] = None,
+        recursive: bool = True,
+    ) -> tuple[int, int]:
         """Process a single PDF file or all PDFs in a directory.
 
         Args:
@@ -504,16 +522,19 @@ class InputProcessor:
                     processed_count=processed_count,
                     skipped_count=skipped_count,
                     total_files=len(pdfs),
-                    event_type="batch_processing_complete"
+                    event_type="batch_processing_complete",
                 )
 
             return processed_count, skipped_count
 
         except Exception as e:
             error_handler = get_error_handler(config)
-            error_handler.handle_error(e, ErrorContext(
-                operation="process_input",
-                file_path=str(input_path),
-                metadata={"mode": mode, "language": lang}
-            ))
+            error_handler.handle_error(
+                e,
+                ErrorContext(
+                    operation="process_input",
+                    file_path=str(input_path),
+                    metadata={"mode": mode, "language": lang},
+                ),
+            )
             raise
