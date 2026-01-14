@@ -1,0 +1,153 @@
+<best_practices>
+  <general_principles>
+    <principle priority="high">
+      <name>Backup First</name>
+      <description>Always create backups before performing bulk file operations</description>
+      <rationale>Prevents data loss from accidental deletions or incorrect operations</rationale>
+      <example>
+        <scenario>Before organizing 100 PDF invoices</scenario>
+        <good>Use cp -r or rsync to create backup directory first</good>
+        <bad>Proceed directly with mv commands without backup</bad>
+      </example>
+    </principle>
+
+    <principle priority="high">
+      <name>Test on Samples</name>
+      <description>Test organization logic on small sample before full execution</description>
+      <rationale>Identifies issues early and prevents widespread problems</rationale>
+      <example>
+        <scenario>Creating new naming scheme for documents</scenario>
+        <good>Test renaming logic on 3-5 sample files first</good>
+        <bad>Apply new scheme to all 500 files immediately</bad>
+      </example>
+    </principle>
+
+    <principle priority="medium">
+      <name>Preserve Metadata</name>
+      <description>Maintain file creation dates and other metadata when possible</description>
+      <rationale>Preserves chronological context and search capabilities</rationale>
+      <example>
+        <scenario>Moving files to new organization structure</scenario>
+        <good>Use mv -p or cp -p to preserve timestamps</good>
+        <bad>Use basic cp/mv which may change modification times</bad>
+      </example>
+    </principle>
+  </general_principles>
+
+  <naming_conventions>
+    <convention category="descriptive_names">
+      <rule>Use descriptive, searchable names with key information</rule>
+      <examples>
+        <good>Invoice_AcmeCorp_2024-01-15_001234.pdf</good>
+        <good>Report_Q4_2023_Financial_Summary.xlsx</good>
+        <bad>document1.pdf, file_001.jpg</bad>
+      </examples>
+    </convention>
+
+    <convention category="date_formats">
+      <rule>Use ISO 8601 date format (YYYY-MM-DD) for consistency</rule>
+      <examples>
+        <good>2024-01-15, 2023-12-31</good>
+        <bad>01/15/2024, 15-Jan-2024, Jan 15 2024</bad>
+      </examples>
+    </convention>
+
+    <convention category="file_categories">
+      <rule>Use clear category prefixes or folder structures</rule>
+      <examples>
+        <good>01_Invoices/, 02_Reports/, 03_Contracts/</good>
+        <good>INV_Company_Date_ID.pdf, RPT_Type_Date.pdf</good>
+      </examples>
+    </convention>
+  </naming_conventions>
+
+  <organization_patterns>
+    <pattern name="chronological">
+      <description>Organize by date for time-sensitive documents</description>
+      <structure>YYYY/MM/ or YYYY-MM/</structure>
+      <use_case>Invoices, reports, correspondence</use_case>
+    </pattern>
+
+    <pattern name="categorical">
+      <description>Organize by type or department</description>
+      <structure>Type/SubType/ or Department/Category/</structure>
+      <use_case>HR documents, financial records, project files</use_case>
+    </pattern>
+
+    <pattern name="entity_based">
+      <description>Organize by company, client, or project</description>
+      <structure>Company/Project/Type/ or Client/Type/</structure>
+      <use_case>Client work, vendor documents, project deliverables</use_case>
+    </pattern>
+
+    <pattern name="hybrid">
+      <description>Combine multiple organization schemes</description>
+      <structure>Category/YYYY-MM/Entity/ or Entity/Type/YYYY/</structure>
+      <use_case>Complex document libraries with multiple access patterns</use_case>
+    </pattern>
+  </organization_patterns>
+
+  <common_pitfalls>
+    <pitfall>
+      <description>Overly complex folder hierarchies</description>
+      <why_problematic>Makes navigation difficult and files hard to find</why_problematic>
+      <correct_approach>Limit to 3-4 levels maximum, use clear naming</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>Inconsistent naming across similar files</description>
+      <why_problematic>Breaks search and sorting capabilities</why_problematic>
+      <correct_approach>Establish and follow strict naming conventions</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>Modifying original files during analysis</description>
+      <why_problematic>Can corrupt files or lose original versions</why_problematic>
+      <correct_approach>Always work on copies for analysis, modify originals only after validation</correct_approach>
+    </pitfall>
+  </common_pitfalls>
+
+  <quality_checklist>
+    <category name="pre_operation">
+      <item>Backups created and verified</item>
+      <item>Organization scheme documented</item>
+      <item>Sample testing completed</item>
+      <item>Permissions checked for target directories</item>
+    </category>
+
+    <category name="during_operation">
+      <item>Progress tracked and logged</item>
+      <item>Error handling implemented</item>
+      <item>Conflicts resolved consistently</item>
+      <item>Resource usage monitored</item>
+    </category>
+
+    <category name="post_operation">
+      <item>All files accounted for</item>
+      <item>Naming conventions verified</item>
+      <item>Folder structure validated</item>
+      <item>Search functionality tested</item>
+      <item>Documentation updated</item>
+    </category>
+  </quality_checklist>
+
+  <tool_specific_guidance>
+    <guidance tool="terminal_commands">
+      <practice>Use find and xargs for batch operations safely</practice>
+      <practice>Include error checking in scripts</practice>
+      <practice>Use dry-run options when available</practice>
+    </guidance>
+
+    <guidance tool="file_analysis">
+      <practice>Check file types with 'file' command before processing</practice>
+      <practice>Use exiftool for comprehensive metadata extraction</practice>
+      <practice>Handle different encodings gracefully</practice>
+    </guidance>
+
+    <guidance tool="ocr_processing">
+      <practice>Verify OCR accuracy on sample pages first</practice>
+      <practice>Handle multi-page documents appropriately</practice>
+      <practice>Clean up temporary OCR files</practice>
+    </guidance>
+  </tool_specific_guidance>
+</best_practices>

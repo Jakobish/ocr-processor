@@ -16,7 +16,6 @@
 #   - Output is saved to: ocr_force/<filename>_<timestamp>/
 #   - Includes PDFs, extracted text, visual PNGs with red highlights, HOCR, and logs
 #############################################
-import os
 import sys
 import subprocess
 import zipfile

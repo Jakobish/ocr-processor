@@ -18,6 +18,7 @@ import zipfile
 from pathlib import Path
 from datetime import datetime
 from bs4 import BeautifulSoup
+from typing import Optional
 from PIL import Image, ImageDraw
 import fitz  # PyMuPDF
 import ocrmypdf
@@ -32,7 +33,7 @@ class PDFOCRGUI:
 
         # Processing state
         self.processing = False
-        self.cancel_processing = False
+        self.cancel_requested = False
 
         # Core functionality (reused from command-line version)
         self.ensure_dir = lambda path: path.mkdir(parents=True, exist_ok=True)
@@ -198,7 +199,7 @@ class PDFOCRGUI:
             return
 
         self.processing = True
-        self.cancel_processing = False
+        self.cancel_requested = False
 
         # Update UI
         self.start_button.config(state=tk.DISABLED)
@@ -212,7 +213,7 @@ class PDFOCRGUI:
 
     def cancel_processing(self):
         """Cancel ongoing processing."""
-        self.cancel_processing = True
+        self.cancel_requested = True
         self.status_var.set("Cancelling...")
 
     def run_processing(self):
@@ -248,7 +249,7 @@ class PDFOCRGUI:
             # Update statistics
             self.stats_var.set(f"Files processed: {processed} | Skipped: {skipped}")
 
-            if not self.cancel_processing:
+            if not self.cancel_requested:
                 self.status_var.set("Processing completed successfully!")
                 self.log_message("🎉 Processing completed!")
             else:
@@ -300,18 +301,52 @@ class PDFOCRGUI:
     def _visualize_hocr(self, hocr_path: Path, original_pdf: Path, vis_output_folder: Path):
         """Generate visual highlights from HOCR file."""
         self.log_message("🖼️ Generating visual highlight from HOCR...")
-        doc = fitz.open(original_pdf)
-        soup = BeautifulSoup(hocr_path.read_text(encoding='utf-8'), 'html.parser')
+        try:
+            doc = fitz.open(original_pdf)
+        except Exception as e:
+            self.log_message(f"Error opening PDF: {e}")
+            return
+        try:
+            soup = BeautifulSoup(hocr_path.read_text(encoding='utf-8'), 'html.parser')
+        except Exception as e:
+            self.log_message(f"Error reading/parsing HOCR: {e}")
+            return
 
         words = soup.find_all("span", class_="ocrx_word")
         coords_per_page = {}
 
         for word in words:
             if "title" in word.attrs:
-                parts = word["title"].split(";")
-                bbox = parts[0].replace("bbox", "").strip()
-                coords = list(map(int, bbox.split()))
-                page_num = int(word.parent["id"].split("_")[-1])
+                title = word["title"]
+                if isinstance(title, list):
+                    title = title[0]
+                try:
+                    parts = title.split(";")
+                    if not parts:
+                        continue
+                    bbox_part = parts[0]
+                    if not bbox_part.startswith("bbox "):
+                        continue
+                    bbox = bbox_part.replace("bbox ", "").strip()
+                    coords = [int(x) for x in bbox.split() if x.isdigit()]
+                    if len(coords) < 4:
+                        continue
+                except (ValueError, IndexError, AttributeError):
+                    continue
+
+                try:
+                    if not word.parent or "id" not in word.parent.attrs:
+                        continue
+                    page_num_str = word.parent["id"]
+                    if isinstance(page_num_str, list):
+                        page_num_str = page_num_str[0]
+                    page_parts = page_num_str.split("_")
+                    if not page_parts:
+                        continue
+                    page_num = int(page_parts[-1])
+                except (ValueError, IndexError, AttributeError):
+                    continue
+
                 coords_per_page.setdefault(page_num, []).append(coords)
 
         self.ensure_dir(vis_output_folder)
@@ -320,18 +355,28 @@ class PDFOCRGUI:
             if page_num >= len(doc):
                 continue
 
-            page = doc.load_page(page_num)
-            pix = page.get_pixmap(dpi=200)
-            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-            draw = ImageDraw.Draw(img)
+            try:
+                page = doc.load_page(page_num)
+                pix = page.get_pixmap(dpi=200)
+                img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+                draw = ImageDraw.Draw(img)
 
-            for box in coords_list:
-                if len(box) >= 4:
-                    x1, y1, x2, y2 = box[:4]
-                    draw.rectangle([x1, y1, x2, y2], outline="red", width=2)
+                for box in coords_list:
+                    if len(box) >= 4:
+                        x1, y1, x2, y2 = box[:4]
+                        # Ensure coordinates are within image bounds
+                        x1 = max(0, min(x1, pix.width))
+                        y1 = max(0, min(y1, pix.height))
+                        x2 = max(0, min(x2, pix.width))
+                        y2 = max(0, min(y2, pix.height))
+                        if x1 < x2 and y1 < y2:
+                            draw.rectangle([x1, y1, x2, y2], outline="red", width=2)
 
-            output_path = vis_output_folder / f"page_{page_num + 1:03d}.png"
-            img.save(output_path)
+                output_path = vis_output_folder / f"page_{page_num + 1:03d}.png"
+                img.save(output_path)
+            except Exception as e:
+                self.log_message(f"Error processing page {page_num}: {e}")
+                continue
 
         self.log_message(f"📸 Highlighted images saved in: {vis_output_folder}")
 
@@ -361,7 +406,7 @@ class PDFOCRGUI:
 
         return base_settings
 
-    def _ocr_process(self, pdf_file: Path, output_base: Path, mode: str, lang: str = "heb+eng", archive_dir: Path = None):
+    def _ocr_process(self, pdf_file: Path, output_base: Path, mode: str, lang: str = "heb+eng", archive_dir: Optional[Path] = None):
         """Process a PDF file with OCR based on specified mode."""
         self.ensure_dir(output_base)
 
@@ -431,7 +476,7 @@ class PDFOCRGUI:
             self.log_message(f"❌ Error processing {pdf_file.name}: {e}")
             return False
 
-    def _process_input(self, input_path: Path, mode: str, lang: str = "heb+eng", archive_dir: Path = None, recursive: bool = True):
+    def _process_input(self, input_path: Path, mode: str, lang: str = "heb+eng", archive_dir: Optional[Path] = None, recursive: bool = True):
         """Process a single PDF file or all PDFs in a directory."""
         if input_path.is_file() and input_path.suffix.lower() == ".pdf":
             pdfs = [input_path]
@@ -455,7 +500,7 @@ class PDFOCRGUI:
         total_files = len(pdfs)
 
         for i, pdf in enumerate(pdfs):
-            if self.cancel_processing:
+            if self.cancel_requested:
                 break
 
             self.log_message(f"\n🔄 Processing: {pdf.name}")

@@ -7,12 +7,14 @@ This guide provides comprehensive instructions for deploying the OCR Processor E
 ## 📋 Prerequisites
 
 ### System Requirements
+
 - **Operating System**: Linux (Ubuntu 20.04+, CentOS 8+, RHEL 8+) or macOS 12+
 - **RAM**: 4GB minimum, 8GB recommended for production
 - **Storage**: 10GB free space minimum, SSD recommended
 - **CPU**: 2 cores minimum, 4+ cores recommended for high throughput
 
 ### Software Dependencies
+
 - **Docker**: 20.10.0+ (for containerized deployment)
 - **Docker Compose**: 2.0+ (for multi-service deployment)
 - **Python**: 3.11+ (for manual installation)
@@ -24,24 +26,27 @@ This guide provides comprehensive instructions for deploying the OCR Processor E
 ### Quick Start
 
 1. **Clone and navigate to the project:**
+
    ```bash
    git clone <repository-url>
    cd ocr-processor
    ```
 
 2. **Start all services:**
+
    ```bash
    docker-compose up -d
    ```
 
 3. **Verify deployment:**
+
    ```bash
    # Check service status
    docker-compose ps
-
+   
    # View logs
    docker-compose logs -f ocr-api
-
+   
    # Health check
    curl http://localhost:8000/health
    ```
@@ -49,24 +54,28 @@ This guide provides comprehensive instructions for deploying the OCR Processor E
 ### Production Deployment
 
 1. **Create environment file:**
+
    ```bash
    cp .env.example .env
    # Edit .env with your production values
    ```
 
 2. **Configure SSL (optional):**
+
    ```bash
    # Place SSL certificates in docker/ssl/
    # Update nginx.conf accordingly
    ```
 
 3. **Scale services:**
+
    ```bash
    # Scale workers based on load
    docker-compose up -d --scale ocr-worker=3
    ```
 
 4. **Update and restart:**
+
    ```bash
    # Pull latest images and restart
    docker-compose pull
@@ -75,7 +84,7 @@ This guide provides comprehensive instructions for deploying the OCR Processor E
 
 ### Docker Service Architecture
 
-```
+```md
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Load Balancer │    │     OCR API     │    │  OCR Workers    │
 │   (Nginx)       │◄──►│   (FastAPI)     │◄──►│  (Batch Jobs)   │
@@ -90,9 +99,10 @@ This guide provides comprehensive instructions for deploying the OCR Processor E
 
 ## 🔧 Manual Installation
 
-### 1. System Dependencies
+### 1\. System Dependencies
 
 **Ubuntu/Debian:**
+
 ```bash
 sudo apt-get update
 sudo apt-get install -y \
@@ -107,6 +117,7 @@ sudo apt-get install -y \
 ```
 
 **CentOS/RHEL:**
+
 ```bash
 sudo yum install -y \
     tesseract \
@@ -118,7 +129,7 @@ sudo yum install -y \
     nginx
 ```
 
-### 2. Python Environment
+### 2\. Python Environment
 
 ```bash
 # Create virtual environment
@@ -130,7 +141,7 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 3. Database Setup
+### 3\. Database Setup
 
 ```bash
 # Start PostgreSQL
@@ -149,7 +160,7 @@ ALTER USER ocr_user CREATEDB;
 \q
 ```
 
-### 4. Application Configuration
+### 4\. Application Configuration
 
 ```bash
 # Copy and edit configuration
@@ -163,7 +174,7 @@ export OCR_SMTP_SERVER="smtp.yourcompany.com"
 # ... other variables
 ```
 
-### 5. Start Services
+### 5\. Start Services
 
 ```bash
 # Start Redis
@@ -181,16 +192,16 @@ python ocr_combined.py --mode force /path/to/documents &
 ### Environment Variables
 
 | Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
+| --- | --- | --- | --- |
 | `OCR_LOG_LEVEL` | Logging level | INFO | No |
-| `OCR_DATABASE_URL` | Database connection | - | Yes* |
-| `OCR_NOTIFICATION_EMAIL` | Admin email | - | No |
-| `OCR_SMTP_SERVER` | SMTP server | - | No |
-| `OCR_WEBHOOK_URL` | Webhook URL | - | No |
+| `OCR_DATABASE_URL` | Database connection | \- | Yes\* |
+| `OCR_NOTIFICATION_EMAIL` | Admin email | \- | No |
+| `OCR_SMTP_SERVER` | SMTP server | \- | No |
+| `OCR_WEBHOOK_URL` | Webhook URL | \- | No |
 | `OCR_MAX_CONCURRENT_JOBS` | Max parallel jobs | 4 | No |
 | `OCR_MAX_FILE_SIZE` | Max file size (bytes) | 104857600 | No |
 
-*Required for database features
+\*Required for database features
 
 ### Configuration File
 
@@ -224,11 +235,13 @@ Create `ocr_config.json`:
 ### API Authentication
 
 1. **Set secure API key:**
+
    ```bash
    export OCR_API_KEY="your-secure-api-key-here"
    ```
 
 2. **Configure CORS:**
+
    ```json
    {
      "api_cors_origins": [
@@ -255,20 +268,22 @@ sudo usermod -a -G ocr $USER
 For production HTTPS:
 
 1. **Get SSL certificate:**
+
    ```bash
    # Using Let's Encrypt
    sudo certbot certonly --nginx -d ocr.yourdomain.com
    ```
 
 2. **Configure Nginx:**
+
    ```nginx
    server {
        listen 443 ssl http2;
        server_name ocr.yourdomain.com;
-
+   
        ssl_certificate /etc/letsencrypt/live/ocr.yourdomain.com/fullchain.pem;
        ssl_certificate_key /etc/letsencrypt/live/ocr.yourdomain.com/privkey.pem;
-
+   
        location / {
            proxy_pass http://localhost:8000;
            proxy_set_header Host $host;
@@ -341,6 +356,7 @@ docker-compose exec -T postgres psql -U ocr_user -d ocr_db < ocr_backup.sql
 ### Common Issues
 
 **High memory usage:**
+
 ```bash
 # Reduce concurrent jobs
 export OCR_MAX_CONCURRENT_JOBS=2
@@ -350,6 +366,7 @@ docker stats
 ```
 
 **Database connection errors:**
+
 ```bash
 # Check database logs
 docker-compose logs postgres
@@ -359,6 +376,7 @@ docker-compose exec ocr-api python -c "from database_manager import get_database
 ```
 
 **OCR processing failures:**
+
 ```bash
 # Check Tesseract installation
 tesseract --version
@@ -371,6 +389,7 @@ tail -f /var/log/ocr/ocr_errors.log
 ```
 
 **API timeouts:**
+
 ```bash
 # Increase timeout settings
 export OCR_TIMEOUT_PER_FILE=600
@@ -395,8 +414,8 @@ export OCR_PROGRESS_BAR=false
 ### Scaling Guidelines
 
 | Load Level | Workers | CPU | RAM | Storage |
-|------------|---------|-----|-----|---------|
-| Light (<10 files/day) | 1 | 2 | 4GB | 50GB |
+| --- | --- | --- | --- | --- |
+| Light (&lt;10 files/day) | 1 | 2 | 4GB | 50GB |
 | Medium (10-100 files/day) | 2-3 | 4 | 8GB | 200GB |
 | Heavy (100+ files/day) | 4+ | 8 | 16GB | 500GB+ |
 
@@ -419,6 +438,10 @@ docker-compose up -d
 ```
 
 ### Manual Upgrade
+
+```bash
+ocrmypdf 
+```
 
 ```bash
 # Backup database
@@ -447,8 +470,8 @@ sudo systemctl restart ocr-api ocr-worker
 
 ### Emergency Contacts
 
-- **System Administrator:** admin@yourcompany.com
-- **Development Team:** dev-team@yourcompany.com
+- **System Administrator:** [admin@yourcompany.com](mailto:admin@yourcompany.com)
+- **Development Team:** [dev-team@yourcompany.com](mailto:dev-team@yourcompany.com)
 - **On-call Support:** +1-234-567-8900
 
 ---

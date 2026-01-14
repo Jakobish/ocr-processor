@@ -1,0 +1,113 @@
+<workflow_instructions>
+  <mode_overview>
+    The File Organizer mode provides comprehensive file management capabilities including intelligent renaming,
+    automated categorization, batch operations, and folder structure creation. It handles various document types
+    and can extract metadata for smart organization.
+  </mode_overview>
+
+  <initialization_steps>
+    <step number="1">
+      <action>Analyze the user's file organization request</action>
+      <details>
+        Parse the request to identify:
+        - Target files or directories
+        - Desired organization scheme (by date, type, content, etc.)
+        - Specific naming conventions or patterns
+        - Any special handling requirements (OCR, metadata extraction, etc.)
+      </details>
+    </step>
+
+    <step number="2">
+      <action>Assess current file structure and content</action>
+      <tools>
+        <tool>list_files - Survey target directories</tool>
+        <tool>read_file - Examine sample files for content analysis</tool>
+        <tool>execute_command - Use file analysis tools (file, exiftool, etc.)</tool>
+        <tool>mcp tools - Leverage OCR or metadata extraction services</tool>
+      </tools>
+    </step>
+  </initialization_steps>
+
+  <main_workflow>
+    <phase name="analysis">
+      <description>Analyze files and determine organization strategy</description>
+      <steps>
+        <step>Identify file types and extract metadata</step>
+        <step>Analyze content for categorization clues (dates, companies, topics)</step>
+        <step>Determine optimal folder structure and naming conventions</step>
+        <step>Plan batch operations and create backup strategy</step>
+      </steps>
+    </phase>
+
+    <phase name="preparation">
+      <description>Set up organization infrastructure</description>
+      <steps>
+        <step>Create target folder structure</step>
+        <step>Generate organization scripts if needed</step>
+        <step>Create backup copies of original files</step>
+        <step>Validate file access permissions</step>
+      </steps>
+    </phase>
+
+    <phase name="execution">
+      <description>Execute file organization operations</description>
+      <steps>
+        <step>Perform intelligent renaming operations</step>
+        <step>Move files to appropriate categories</step>
+        <step>Handle special cases (duplicates, conflicts, etc.)</step>
+        <step>Process files in batches to manage system resources</step>
+      </steps>
+    </phase>
+
+    <phase name="validation">
+      <description>Verify organization results and clean up</description>
+      <steps>
+        <step>Verify all files moved correctly</step>
+        <step>Check naming consistency</step>
+        <step>Remove temporary files and backups if requested</step>
+        <step>Generate organization summary report</step>
+      </steps>
+    </phase>
+  </main_workflow>
+
+  <specialized_workflows>
+    <workflow name="intelligent_renaming">
+      <description>For smart file renaming based on content analysis</description>
+      <steps>
+        <step>Extract text content (OCR if needed)</step>
+        <step>Identify key information (dates, names, titles)</step>
+        <step>Apply naming templates</step>
+        <step>Handle naming conflicts</step>
+      </steps>
+    </workflow>
+
+    <workflow name="categorization">
+      <description>For organizing files into category-based folders</description>
+      <steps>
+        <step>Define categorization rules</step>
+        <step>Analyze file metadata and content</step>
+        <step>Create category folders</step>
+        <step>Move files to appropriate categories</step>
+      </steps>
+    </workflow>
+
+    <workflow name="batch_operations">
+      <description>For processing multiple files with scripts</description>
+      <steps>
+        <step>Create or adapt batch processing script</step>
+        <step>Test script on sample files</step>
+        <step>Execute batch operation with progress tracking</step>
+        <step>Handle errors and retry failed operations</step>
+      </steps>
+    </workflow>
+  </specialized_workflows>
+
+  <completion_criteria>
+    <criterion>All target files have been processed</criterion>
+    <criterion>Files are organized according to specified scheme</criterion>
+    <criterion>Naming conventions are consistent and descriptive</criterion>
+    <criterion>Folder structure is logical and scalable</criterion>
+    <criterion>No files lost or corrupted during operations</criterion>
+    <criterion>Organization summary provided to user</criterion>
+  </completion_criteria>
+</workflow_instructions>

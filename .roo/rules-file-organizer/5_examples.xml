@@ -1,0 +1,428 @@
+<examples>
+  <example name="organize_invoice_pdfs">
+    <description>Organize a collection of invoice PDFs by company and date</description>
+    <context>User has a folder with 50+ invoice PDFs from different companies, all with generic names like "Invoice_001.pdf"</context>
+    <workflow>
+      <step number="1">
+        <action>Analyze sample files to understand content structure</action>
+        <code>
+read_file path="invoices/Invoice_001.pdf" # Extract text content
+read_file path="invoices/Invoice_002.pdf" # Compare patterns
+        </code>
+        <explanation>Check for common patterns like company names, dates, invoice numbers</explanation>
+      </step>
+      <step number="2">
+        <action>Create organization script</action>
+        <code>
+#!/bin/bash
+# organize_invoices.sh
+for file in *.pdf; do
+    # Extract company name and date using OCR/metadata
+    company=$(pdfgrep -i "company|invoice from" "$file" | head -1 | sed 's/.*: *//')
+    date=$(pdfgrep -i "date|invoice date" "$file" | head -1 | sed 's/.*: *//')
+    
+    if [ -n "$company" ] && [ -n "$date" ]; then
+        # Create directory structure
+        mkdir -p "organized/${company}"
+        # Rename file with descriptive name
+        mv "$file" "organized/${company}/Invoice_${company}_${date}.pdf"
+    fi
+done
+        </code>
+        <explanation>Create a bash script to extract metadata and organize files</explanation>
+      </step>
+      <step number="3">
+        <action>Execute organization</action>
+        <code>
+execute_command command="cd invoices && chmod +x organize_invoices.sh && ./organize_invoices.sh"
+        </code>
+        <explanation>Run the organization script in the invoices directory</explanation>
+      </step>
+      <step number="4">
+        <action>Verify results</action>
+        <code>
+list_files path="invoices/organized" recursive="true"
+        </code>
+        <explanation>Check that files are properly organized and renamed</explanation>
+      </step>
+    </workflow>
+    <expected_output>
+      <structure>
+        invoices/organized/
+        ├── AcmeCorp/
+        │   ├── Invoice_AcmeCorp_2024-01-15.pdf
+        │   └── Invoice_AcmeCorp_2024-02-01.pdf
+        ├── TechSolutions/
+        │   ├── Invoice_TechSolutions_2024-01-20.pdf
+        │   └── Invoice_TechSolutions_2024-02-15.pdf
+        └── unorganized/
+            └── Invoice_045.pdf (files that couldn't be processed)
+      </structure>
+    </expected_output>
+  </example>
+
+  <example name="chronological_document_sorting">
+    <description>Sort documents into year/month folders based on file dates</description>
+    <context>User has mixed documents that need to be organized by creation date</context>
+    <workflow>
+      <step number="1">
+        <action>Survey current file structure</action>
+        <code>
+list_files path="documents" recursive="false"
+        </code>
+        <explanation>Get overview of files to organize</explanation>
+      </step>
+      <step number="2">
+        <action>Create chronological organization script</action>
+        <code>
+#!/bin/bash
+# organize_by_date.sh
+TARGET_DIR="organized_by_date"
+
+for file in *; do
+    if [ -f "$file" ]; then
+        # Get file modification year and month
+        year=$(date -r "$file" +%Y)
+        month=$(date -r "$file" +%m)
+        
+        # Create directory structure
+        mkdir -p "$TARGET_DIR/$year/$month"
+        
+        # Move file preserving original name
+        mv "$file" "$TARGET_DIR/$year/$month/"
+    fi
+done
+
+echo "Organization complete. Files moved to $TARGET_DIR"
+        </code>
+        <explanation>Create script to organize files by modification date</explanation>
+      </step>
+      <step number="3">
+        <action>Execute and verify</action>
+        <code>
+execute_command command="cd documents && bash organize_by_date.sh"
+list_files path="documents/organized_by_date" recursive="true"
+        </code>
+        <explanation>Run script and verify the chronological organization</explanation>
+      </step>
+    </workflow>
+    <expected_output>
+      <structure>
+        documents/organized_by_date/
+        ├── 2023/
+        │   ├── 01/
+        │   ├── 02/
+        │   └── 12/
+        ├── 2024/
+        │   ├── 01/
+        │   ├── 02/
+        │   └── 03/
+        └── 2025/
+            └── 01/
+      </structure>
+    </expected_output>
+  </example>
+
+  <example name="intelligent_file_renaming">
+    <description>Use content analysis to rename files with descriptive names</description>
+    <context>User has documents with generic names but rich content that can be used for better naming</context>
+    <workflow>
+      <step number="1">
+        <action>Analyze file content patterns</action>
+        <code>
+codebase_search query="extract text from PDF files"
+read_file path="sample_document.pdf" # Check content structure
+        </code>
+        <explanation>Find patterns in document content for intelligent naming</explanation>
+      </step>
+      <step number="2">
+        <action>Create Python renaming script</action>
+        <code>
+#!/usr/bin/env python3
+import os
+import re
+from pathlib import Path
+
+def extract_info_from_content(file_path):
+    """Extract key information from file content"""
+    # This would use OCR or text extraction
+    # For demo, assume we have content extraction function
+    content = extract_text(file_path)
+    
+    # Look for patterns
+    title_match = re.search(r'Title:\s*(.+?)(?:\n|$)', content, re.IGNORECASE)
+    author_match = re.search(r'Author:\s*(.+?)(?:\n|$)', content, re.IGNORECASE)
+    date_match = re.search(r'Date:\s*(\d{1,2}/\d{1,2}/\d{4})', content)
+    
+    return {
+        'title': title_match.group(1).strip() if title_match else '',
+        'author': author_match.group(1).strip() if author_match else '',
+        'date': date_match.group(1) if date_match else ''
+    }
+
+def rename_file_smart(file_path):
+    """Rename file based on extracted content"""
+    info = extract_info_from_content(file_path)
+    
+    if info['title'] and info['author']:
+        # Create new name
+        title_clean = re.sub(r'[^\w\-_\. ]', '', info['title']).replace(' ', '_')
+        author_clean = re.sub(r'[^\w\-_\. ]', '', info['author']).replace(' ', '_')
+        new_name = f"{author_clean}_{title_clean}.pdf"
+        
+        new_path = file_path.parent / new_name
+        file_path.rename(new_path)
+        print(f"Renamed: {file_path.name} -> {new_name}")
+
+# Process all PDFs in current directory
+for pdf_file in Path('.').glob('*.pdf'):
+    rename_file_smart(pdf_file)
+        </code>
+        <explanation>Create Python script for content-based renaming</explanation>
+      </step>
+      <step number="3">
+        <action>Execute renaming</action>
+        <code>
+execute_command command="cd documents && python3 smart_rename.py"
+list_files path="documents"
+        </code>
+        <explanation>Run the intelligent renaming script</explanation>
+      </step>
+    </workflow>
+    <expected_output>
+      <before>
+        document1.pdf
+        document2.pdf
+        report_final.pdf
+      </before>
+      <after>
+        John_Doe_Annual_Report_2024.pdf
+        Jane_Smith_Project_Plan_Q1.pdf
+        report_final.pdf (unchanged if no metadata found)
+      </after>
+    </expected_output>
+  </example>
+
+  <example name="category_based_organization">
+    <description>Automatically categorize files by content analysis</description>
+    <context>User has mixed file types that need to be sorted into categories like Work, Personal, Finance, etc.</context>
+    <workflow>
+      <step number="1">
+        <action>Define categorization rules</action>
+        <code>
+# Define categories and keywords
+declare -A categories=(
+    ["Finance"]="invoice|receipt|bank|payment|salary|tax|budget"
+    ["Work"]="meeting|project|report|presentation|email|memo"
+    ["Personal"]="photo|vacation|recipe|personal|family|diary"
+    ["Legal"]="contract|agreement|legal|lawsuit|court|attorney"
+)
+        </code>
+        <explanation>Define categories with associated keywords</explanation>
+      </step>
+      <step number="2">
+        <action>Create categorization script</action>
+        <code>
+#!/bin/bash
+# categorize_files.sh
+
+# Define categories
+declare -A categories=(
+    ["Finance"]="invoice|receipt|bank|payment|salary|tax|budget"
+    ["Work"]="meeting|project|report|presentation|email|memo"
+    ["Personal"]="photo|vacation|recipe|personal|family|diary"
+    ["Legal"]="contract|agreement|legal|lawsuit|court|attorney"
+)
+
+# Function to categorize file
+categorize_file() {
+    local file="$1"
+    local content=""
+    
+    # Extract content based on file type
+    if [[ "$file" == *.pdf ]]; then
+        content=$(pdftotext "$file" - 2>/dev/null || echo "")
+    elif [[ "$file" == *.txt ]] || [[ "$file" == *.md ]]; then
+        content=$(cat "$file")
+    fi
+    
+    # Check against categories
+    for category in "${!categories[@]}"; do
+        if echo "$content" | grep -qi "${categories[$category]}"; then
+            mkdir -p "$category"
+            mv "$file" "$category/"
+            echo "Moved $file to $category/"
+            return 0
+        fi
+    done
+    
+    # If no category matches, put in Uncategorized
+    mkdir -p "Uncategorized"
+    mv "$file" "Uncategorized/"
+    echo "Moved $file to Uncategorized/"
+}
+
+# Process all files
+for file in *; do
+    if [ -f "$file" ]; then
+        categorize_file "$file"
+    fi
+done
+        </code>
+        <explanation>Create script to categorize files based on content keywords</explanation>
+      </step>
+      <step number="3">
+        <action>Execute categorization</action>
+        <code>
+execute_command command="cd mixed_files && bash categorize_files.sh"
+list_files path="mixed_files" recursive="true"
+        </code>
+        <explanation>Run categorization and verify results</explanation>
+      </step>
+    </workflow>
+    <expected_output>
+      <structure>
+        mixed_files/
+        ├── Finance/
+        │   ├── bank_statement.pdf
+        │   └── tax_return.pdf
+        ├── Work/
+        │   ├── project_plan.docx
+        │   └── meeting_notes.txt
+        ├── Personal/
+        │   ├── vacation_photos.jpg
+        │   └── family_recipe.pdf
+        └── Uncategorized/
+            └── random_file.txt
+      </structure>
+    </expected_output>
+  </example>
+
+  <example name="batch_image_organization">
+    <description>Organize image files by date and type with metadata extraction</description>
+    <context>User has hundreds of photos and images that need to be organized by date taken and categorized</context>
+    <workflow>
+      <step number="1">
+        <action>Check image metadata</action>
+        <code>
+execute_command command="exiftool -s3 -DateTimeOriginal sample.jpg"
+execute_command command="file images/* | head -10"
+        </code>
+        <explanation>Check what metadata is available in image files</explanation>
+      </step>
+      <step number="2">
+        <action>Create image organization script</action>
+        <code>
+#!/bin/bash
+# organize_images.sh
+
+TARGET_DIR="organized_images"
+
+for file in *; do
+    if [ -f "$file" ]; then
+        # Get creation date from EXIF or file system
+        date_info=$(exiftool -s3 -DateTimeOriginal "$file" 2>/dev/null || 
+                   exiftool -s3 -CreateDate "$file" 2>/dev/null ||
+                   date -r "$file" +%Y-%m-%d)
+        
+        if [ -n "$date_info" ]; then
+            # Extract year and month
+            year=$(echo "$date_info" | cut -d: -f1 | cut -d' ' -f1)
+            month=$(echo "$date_info" | cut -d: -f2 | cut -d' ' -f1)
+            
+            # Create directory structure
+            mkdir -p "$TARGET_DIR/$year/$month"
+            
+            # Move file
+            mv "$file" "$TARGET_DIR/$year/$month/"
+            echo "Moved $file to $year/$month/"
+        else
+            # No date info, put in undated folder
+            mkdir -p "$TARGET_DIR/undated"
+            mv "$file" "$TARGET_DIR/undated/"
+        fi
+    fi
+done
+        </code>
+        <explanation>Create script to organize images by EXIF date</explanation>
+      </step>
+      <step number="3">
+        <action>Execute organization</action>
+        <code>
+execute_command command="cd images && bash organize_images.sh"
+list_files path="images/organized_images" recursive="true"
+        </code>
+        <explanation>Run the image organization script</explanation>
+      </step>
+    </workflow>
+    <expected_output>
+      <structure>
+        images/organized_images/
+        ├── 2023/
+        │   ├── 07/
+        │   │   ├── vacation_001.jpg
+        │   │   └── vacation_002.jpg
+        │   └── 12/
+        │       └── christmas.jpg
+        ├── 2024/
+        │   ├── 01/
+        │   ├── 02/
+        │   └── 03/
+        └── undated/
+            └── scan001.jpg
+      </structure>
+    </expected_output>
+  </example>
+
+  <example name="duplicate_file_cleanup">
+    <description>Find and handle duplicate files during organization</description>
+    <context>User has duplicate files that need to be identified and cleaned up</context>
+    <workflow>
+      <step number="1">
+        <action>Find duplicate files</action>
+        <code>
+execute_command command="cd files && find . -type f -exec md5sum {} \; | sort | uniq -w32 -d"
+        </code>
+        <explanation>Use md5sum to find files with identical content</explanation>
+      </step>
+      <step number="2">
+        <action>Create deduplication script</action>
+        <code>
+#!/bin/bash
+# deduplicate_files.sh
+
+# Create backup directory
+mkdir -p backup_duplicates
+
+# Find and process duplicates
+find . -type f -exec md5sum {} \; | sort | uniq -w32 -d | cut -d' ' -f3- | while read -r file; do
+    # Keep the first occurrence, move others to backup
+    if [ ! -f ".duplicate_processed$(basename "$file")" ]; then
+        touch ".duplicate_processed$(basename "$file")"
+    else
+        echo "Moving duplicate: $file"
+        mv "$file" "backup_duplicates/"
+    fi
+done
+
+# Clean up temporary files
+rm .duplicate_processed*
+
+echo "Deduplication complete. Duplicates moved to backup_duplicates/"
+        </code>
+        <explanation>Create script to identify and move duplicate files</explanation>
+      </step>
+      <step number="3">
+        <action>Execute deduplication</action>
+        <code>
+execute_command command="cd files && bash deduplicate_files.sh"
+list_files path="files/backup_duplicates"
+        </code>
+        <explanation>Run deduplication and check backup folder</explanation>
+      </step>
+    </workflow>
+    <expected_output>
+      <summary>Removed 15 duplicate files, kept originals, duplicates backed up</summary>
+    </expected_output>
+  </example>
+</examples>

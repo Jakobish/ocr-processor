@@ -18,11 +18,9 @@ import filecmp
 import logging
 import os
 import shutil
-import sys
 from pathlib import Path
 
 import ocrmypdf
-import logging
 import argparse
 from ocrmypdf.exceptions import InputFileError
 

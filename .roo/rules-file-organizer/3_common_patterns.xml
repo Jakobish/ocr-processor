@@ -1,0 +1,240 @@
+<common_patterns>
+  <scripting_patterns>
+    <pattern name="batch_rename">
+      <description>Template for batch file renaming operations</description>
+      <bash_example><![CDATA[
+#!/bin/bash
+# Batch rename with pattern replacement
+find "$SOURCE_DIR" -name "$PATTERN" -type f | while read -r file; do
+    new_name=$(echo "$file" | sed "s/$OLD_PATTERN/$NEW_PATTERN/g")
+    echo "Renaming: $file -> $new_name"
+    mv "$file" "$new_name"
+done
+      ]]></bash_example>
+      <python_example><![CDATA[
+import os
+import re
+from pathlib import Path
+
+def batch_rename(directory, pattern, replacement, recursive=True):
+    """Batch rename files using regex patterns"""
+    path = Path(directory)
+    for file_path in path.rglob('*') if recursive else path.iterdir():
+        if file_path.is_file() and re.search(pattern, file_path.name):
+            new_name = re.sub(pattern, replacement, file_path.name)
+            new_path = file_path.parent / new_name
+            print(f"Renaming: {file_path} -> {new_path}")
+            file_path.rename(new_path)
+      ]]></python_example>
+    </pattern>
+
+    <pattern name="organize_by_date">
+      <description>Organize files into date-based folder structure</description>
+      <bash_example><![CDATA[
+#!/bin/bash
+# Organize files by modification date
+find "$SOURCE_DIR" -type f | while read -r file; do
+    date_dir=$(date -r "$file" +%Y-%m)
+    mkdir -p "$TARGET_DIR/$date_dir"
+    mv "$file" "$TARGET_DIR/$date_dir/"
+done
+      ]]></bash_example>
+      <python_example><![CDATA[
+import os
+import shutil
+from datetime import datetime
+from pathlib import Path
+
+def organize_by_date(source_dir, target_dir, date_source='modified'):
+    """Organize files into YYYY-MM folders by date"""
+    source = Path(source_dir)
+    target = Path(target_dir)
+
+    for file_path in source.rglob('*'):
+        if file_path.is_file():
+            if date_source == 'modified':
+                file_date = datetime.fromtimestamp(file_path.stat().st_mtime)
+            elif date_source == 'created':
+                file_date = datetime.fromtimestamp(file_path.stat().st_ctime)
+
+            date_folder = file_date.strftime('%Y-%m')
+            target_folder = target / date_folder
+            target_folder.mkdir(parents=True, exist_ok=True)
+
+            shutil.move(str(file_path), str(target_folder / file_path.name))
+      ]]></python_example>
+    </pattern>
+
+    <pattern name="extract_metadata">
+      <description>Extract and use file metadata for organization</description>
+      <bash_example><![CDATA[
+#!/bin/bash
+# Extract PDF metadata and rename
+for file in *.pdf; do
+    title=$(pdfinfo "$file" | grep "Title:" | cut -d: -f2- | sed 's/^ *//')
+    author=$(pdfinfo "$file" | grep "Author:" | cut -d: -f2- | sed 's/^ *//')
+    if [ -n "$title" ] && [ -n "$author" ]; then
+        new_name="${author}_${title}.pdf"
+        new_name=$(echo "$new_name" | tr ' ' '_' | tr -d '[:punct:]')
+        mv "$file" "$new_name"
+    fi
+done
+      ]]></bash_example>
+      <python_example><![CDATA[
+import os
+from pathlib import Path
+try:
+    from PyPDF2 import PdfReader
+except ImportError:
+    PdfReader = None
+
+def extract_pdf_metadata(file_path):
+    """Extract metadata from PDF files"""
+    if not PdfReader:
+        return {}
+
+    try:
+        reader = PdfReader(file_path)
+        info = reader.metadata
+        return {
+            'title': info.title or '',
+            'author': info.author or '',
+            'subject': info.subject or '',
+            'creator': info.creator or ''
+        }
+    except:
+        return {}
+
+def rename_by_metadata(directory):
+    """Rename PDF files based on their metadata"""
+    path = Path(directory)
+    for pdf_file in path.glob('*.pdf'):
+        metadata = extract_pdf_metadata(pdf_file)
+        if metadata.get('title') and metadata.get('author'):
+            title = metadata['title'].replace(' ', '_').replace('/', '-')
+            author = metadata['author'].replace(' ', '_').replace('/', '-')
+            new_name = f"{author}_{title}.pdf"
+            new_path = pdf_file.parent / new_name
+            pdf_file.rename(new_path)
+      ]]></python_example>
+    </pattern>
+  </scripting_patterns>
+
+  <organization_schemes>
+    <scheme name="document_library">
+      <description>Standard document library structure</description>
+      <structure>
+        <folder>01_Invoices/</folder>
+        <folder>02_Reports/</folder>
+        <folder>03_Contracts/</folder>
+        <folder>04_Correspondence/</folder>
+        <folder>05_Archive/</folder>
+      </structure>
+      <naming_pattern>DOC_TYPE_Company_YYYY-MM-DD_ID.ext</naming_pattern>
+    </scheme>
+
+    <scheme name="project_based">
+      <description>Project-centric organization</description>
+      <structure>
+        <folder>Projects/
+          <folder>Project_A/
+            <folder>01_Planning/</folder>
+            <folder>02_Development/</folder>
+            <folder>03_Testing/</folder>
+            <folder>04_Documentation/</folder>
+          </folder>
+        </folder>
+      </structure>
+      <naming_pattern>PROJ_ProjectName_Category_YYYY-MM-DD_Version.ext</naming_pattern>
+    </scheme>
+
+    <scheme name="chronological">
+      <description>Date-based organization</description>
+      <structure>
+        <folder>2024/
+          <folder>01_January/</folder>
+          <folder>02_February/</folder>
+        </folder>
+        <folder>2025/</folder>
+      </structure>
+      <naming_pattern>YYYY-MM-DD_Category_Description.ext</naming_pattern>
+    </scheme>
+  </organization_schemes>
+
+  <content_analysis_patterns>
+    <pattern name="invoice_parsing">
+      <description>Extract invoice information from documents</description>
+      <indicators>
+        <indicator>Invoice #, Invoice Number</indicator>
+        <indicator>Amount Due, Total Amount</indicator>
+        <indicator>Company names, vendor information</indicator>
+        <indicator>Date patterns (MM/DD/YYYY, DD-MM-YYYY)</indicator>
+      </indicators>
+      <extraction_rules>
+        <rule>Look for currency symbols followed by numbers</rule>
+        <rule>Identify date formats and standardize to YYYY-MM-DD</rule>
+        <rule>Extract company names from headers/footers</rule>
+      </extraction_rules>
+    </pattern>
+
+    <pattern name="contract_parsing">
+      <description>Extract contract key information</description>
+      <indicators>
+        <indicator>Contract Date, Effective Date</indicator>
+        <indicator>Party names, signatories</indicator>
+        <indicator>Contract value, amounts</indicator>
+        <indicator>Term duration, expiration dates</indicator>
+      </indicators>
+      <extraction_rules>
+        <rule>Identify parties by "between" or "among" clauses</rule>
+        <rule>Find date references and categorize by type</rule>
+        <rule>Extract monetary values with context</rule>
+      </extraction_rules>
+    </pattern>
+
+    <pattern name="report_categorization">
+      <description>Categorize reports by type and content</description>
+      <categories>
+        <category name="financial">Balance sheets, P&L, budgets</category>
+        <category name="operational">Status reports, performance metrics</category>
+        <category name="analytical">Market research, trend analysis</category>
+        <category name="compliance">Audit reports, regulatory filings</category>
+      </categories>
+      <classification_rules>
+        <rule>Check document headers and titles for keywords</rule>
+        <rule>Analyze table structures and content types</rule>
+        <rule>Look for industry-specific terminology</rule>
+      </classification_rules>
+    </pattern>
+  </content_analysis_patterns>
+
+  <error_handling_patterns>
+    <pattern name="duplicate_handling">
+      <description>Handle duplicate files during organization</description>
+      <strategies>
+        <strategy name="rename">Add suffix (_copy, _2, etc.)</strategy>
+        <strategy name="compare">Compare file sizes and modification dates</strategy>
+        <strategy name="skip">Skip duplicates and log conflicts</strategy>
+        <strategy name="backup">Move duplicates to backup folder</strategy>
+      </strategies>
+    </pattern>
+
+    <pattern name="permission_errors">
+      <description>Handle files with restricted permissions</description>
+      <approaches>
+        <approach>Log permission issues and continue</approach>
+        <approach>Attempt to change permissions if possible</approach>
+        <approach>Skip restricted files with notification</approach>
+      </approaches>
+    </pattern>
+
+    <pattern name="corrupt_files">
+      <description>Handle corrupted or unreadable files</description>
+      <responses>
+        <response>Move to quarantine folder</response>
+        <response>Log corruption details</response>
+        <response>Attempt recovery if possible</response>
+      </responses>
+    </pattern>
+  </error_handling_patterns>
+</common_patterns>

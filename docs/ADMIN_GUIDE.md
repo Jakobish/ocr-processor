@@ -9,18 +9,21 @@ This guide provides comprehensive instructions for administering and maintaining
 ### Dashboard Access
 
 **Web Interface:**
-- **URL:** `http://your-server:8000/docs` (API documentation)
-- **Health Check:** `http://your-server:8000/health`
-- **Metrics:** `http://your-server:8000/metrics`
+
+* **URL:** `http://your-server:8000/docs` (API documentation)
+* **Health Check:** `http://your-server:8000/health`
+* **Metrics:** `http://your-server:8000/metrics`
 
 **Database Interface:**
-- **PgAdmin:** `http://your-server:5050` (if deployed)
-- **Direct Access:** `psql -h localhost -U ocr_user -d ocr_db`
+
+* **PgAdmin:** `http://your-server:5050` (if deployed)
+* **Direct Access:** `psql -h localhost -U ocr_user -d ocr_db`
 
 ### Key Metrics to Monitor
 
 #### Application Metrics
-```bash
+
+```Shell
 # Get current metrics via API
 curl http://localhost:8000/metrics
 
@@ -29,7 +32,8 @@ curl http://localhost:8000/status
 ```
 
 #### System Metrics
-```bash
+
+```Shell
 # CPU and Memory usage
 docker stats
 
@@ -43,7 +47,8 @@ ss -tuln | grep :8000
 ### Log Monitoring
 
 #### Application Logs
-```bash
+
+```Shell
 # Real-time log monitoring
 docker-compose logs -f ocr-api
 docker-compose logs -f ocr-worker
@@ -54,7 +59,8 @@ docker-compose logs ocr-worker | grep -i "failed\|error"
 ```
 
 #### System Logs
-```bash
+
+```Shell
 # Service logs
 journalctl -u ocr-api -f
 journalctl -u ocr-worker -f
@@ -69,7 +75,8 @@ tail -f /var/log/nginx/error.log
 ### Daily Tasks
 
 #### 1. Health Verification
-```bash
+
+```Shell
 #!/bin/bash
 # daily_health_check.sh
 
@@ -109,7 +116,8 @@ echo "=== End of Health Check ==="
 ```
 
 #### 2. Log Rotation
-```bash
+
+```Shell
 # Manual log rotation
 docker-compose exec ocr-api python -c "
 from logger import log_manager
@@ -126,7 +134,8 @@ SELECT cleanup_old_records(30);  -- Keep 30 days
 ### Weekly Tasks
 
 #### 1. Performance Analysis
-```bash
+
+```Shell
 # Generate performance report
 curl "http://localhost:8000/metrics?days=7" > weekly_report.json
 
@@ -143,7 +152,8 @@ WHERE created_at >= NOW() - INTERVAL '7 days';
 ```
 
 #### 2. Security Audit
-```bash
+
+```Shell
 # Check file permissions
 find /var/ocr -type f -exec ls -la {} \; | grep -v "ocr.ocr"
 
@@ -155,7 +165,10 @@ grep "authentication\|login\|api" /var/log/ocr/ocr_processor.log
 ```
 
 #### 3. Backup Verification
-```bash
+
+/
+
+```Shell
 # Test database backup restoration
 pg_restore --schema-only --dry-run ocr_backup_$(date +%Y%m%d).sql
 
@@ -166,7 +179,8 @@ tar -tzf ocr_files_backup.tar.gz | head -10
 ### Monthly Tasks
 
 #### 1. Capacity Planning
-```bash
+
+```Shell
 # Analyze storage growth
 du -sh /var/ocr/output/ /var/ocr/archive/ /var/log/ocr/
 
@@ -183,7 +197,8 @@ ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
 ```
 
 #### 2. Performance Optimization
-```bash
+
+```Shell
 # Update Tesseract if needed
 tesseract --version
 
@@ -200,7 +215,8 @@ ORDER BY mean_time DESC LIMIT 10;
 ### Service Outage
 
 #### 1. Immediate Actions
-```bash
+
+```Shell
 # Check service status
 docker-compose ps
 
@@ -216,7 +232,8 @@ df -h
 #### 2. Recovery Procedures
 
 **API Server Down:**
-```bash
+
+```Shell
 # Restart API server
 docker-compose restart ocr-api
 
@@ -228,7 +245,8 @@ python -m uvicorn api_server:get_api_server(config).app --host 0.0.0.0 --port 80
 ```
 
 **Worker Process Down:**
-```bash
+
+```Shell
 # Check for stuck processes
 ps aux | grep ocr_combined
 
@@ -243,7 +261,8 @@ python ocr_combined.py --mode force /path/to/input &
 ```
 
 **Database Connection Issues:**
-```bash
+
+```Shell
 # Check PostgreSQL status
 docker-compose logs postgres
 
@@ -257,7 +276,8 @@ docker-compose exec postgres pg_isready -U ocr_user -d ocr_db
 ### Data Issues
 
 #### File Corruption
-```bash
+
+```Shell
 # Identify corrupted files
 find /var/ocr/input -name "*.pdf" -exec sh -c '
     if ! file "$1" | grep -q PDF; then
@@ -275,7 +295,8 @@ find /var/ocr/input -name "*.pdf" -exec sh -c '
 ```
 
 #### Database Corruption
-```bash
+
+```Shell
 # Check database integrity
 docker-compose exec postgres psql -U ocr_user -d ocr_db -c "
 SELECT schemaname, tablename, attname, n_distinct, most_common_vals
@@ -292,7 +313,8 @@ docker-compose exec postgres vacuumdb -U ocr_user -d ocr_db --analyze
 ### Environment Variables
 
 #### Production Settings
-```bash
+
+```Shell
 # Performance tuning
 export OCR_MAX_CONCURRENT_JOBS=8
 export OCR_TIMEOUT_PER_FILE=600
@@ -309,7 +331,8 @@ export OCR_WEBHOOK_URL=https://monitoring.yourcompany.com/webhooks/ocr
 ```
 
 #### Development Settings
-```bash
+
+```Shell
 # Development configuration
 export OCR_LOG_LEVEL=DEBUG
 export OCR_MAX_CONCURRENT_JOBS=2
@@ -321,7 +344,8 @@ export OCR_API_PORT=8000
 ### Configuration Updates
 
 #### Via Configuration File
-```bash
+
+```Shell
 # Edit configuration
 nano ocr_config.json
 
@@ -340,7 +364,8 @@ docker-compose restart
 ```
 
 #### Via Environment Variables
-```bash
+
+```Shell
 # Set permanent environment variables
 echo 'export OCR_MAX_CONCURRENT_JOBS=4' >> ~/.bashrc
 source ~/.bashrc
@@ -355,7 +380,8 @@ docker-compose restart ocr-worker
 ### Access Control
 
 #### API Security
-```bash
+
+```Shell
 # Generate secure API key
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 
@@ -367,7 +393,8 @@ curl -H "Authorization: Bearer your-api-key" http://localhost:8000/health
 ```
 
 #### File System Security
-```bash
+
+```Shell
 # Set proper ownership
 sudo chown -R ocr:ocr /var/ocr/
 
@@ -383,7 +410,8 @@ sudo auditctl -w /var/ocr/ -p rwxa -k ocr_access
 ### SSL/TLS Management
 
 #### Certificate Renewal
-```bash
+
+```Shell
 # Check certificate expiry
 sudo certbot certificates
 
@@ -396,7 +424,8 @@ sudo nginx -t && sudo nginx -s reload
 ```
 
 #### Security Headers
-```nginx
+
+```Nginx
 # Add to Nginx configuration
 add_header X-Frame-Options DENY;
 add_header X-Content-Type-Options nosniff;
@@ -409,7 +438,8 @@ add_header Strict-Transport-Security "max-age=31536000; includeSubDomains";
 ### Memory Management
 
 #### Monitoring Memory Usage
-```bash
+
+```Shell
 # Real-time memory monitoring
 watch -n 5 'docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"'
 
@@ -421,7 +451,8 @@ valgrind --tool=massif python ocr_combined.py --mode cli test.pdf
 ```
 
 #### Memory Optimization
-```bash
+
+```Shell
 # Reduce worker memory usage
 export OCR_MAX_CONCURRENT_JOBS=2
 
@@ -435,7 +466,8 @@ export PYTHONOPTIMIZE=1
 ### CPU Optimization
 
 #### Load Balancing
-```bash
+
+```Shell
 # Distribute load across workers
 docker-compose up -d --scale ocr-worker=4
 
@@ -447,7 +479,8 @@ renice -n 10 $(pgrep -f "python.*ocr_combined")
 ```
 
 #### Processing Optimization
-```bash
+
+```Shell
 # Use appropriate OCR settings for file types
 export OCR_TESSERACT_CONFIG="--psm 3 --oem 3"
 
@@ -461,7 +494,8 @@ export OCR_DEFAULT_LANGUAGE="heb+eng"
 ### Storage Optimization
 
 #### Disk Space Management
-```bash
+
+```Shell
 # Monitor disk usage
 watch -n 60 'df -h /var/ocr/'
 
@@ -473,7 +507,8 @@ tar -czf /backup/ocr_$(date +%Y%m%d).tar.gz /var/ocr/output/
 ```
 
 #### I/O Optimization
-```bash
+
+```Shell
 # Use faster storage for temporary files
 export OCR_TEMP_DIR="/tmp/ocr"
 
@@ -489,7 +524,8 @@ mount -t tmpfs -o size=2G tmpfs /tmp/ocr/
 ### Database Administration
 
 #### Query Optimization
-```sql
+
+```SQL
 -- Analyze query performance
 EXPLAIN ANALYZE SELECT * FROM ocr_jobs WHERE status = 'completed';
 
@@ -504,7 +540,8 @@ ANALYZE ocr_audit_logs;
 ```
 
 #### Backup and Recovery
-```bash
+
+```Shell
 # Create backup
 docker-compose exec postgres pg_dump -U ocr_user ocr_db > backup.sql
 
@@ -520,7 +557,8 @@ SELECT pg_wal_replay_resume();
 ### Service Scaling
 
 #### Horizontal Scaling
-```bash
+
+```Shell
 # Scale API servers
 docker-compose up -d --scale ocr-api=2
 
@@ -532,7 +570,8 @@ docker-compose up -d --scale ocr-worker=6
 ```
 
 #### Auto-scaling (with Kubernetes)
-```yaml
+
+```YAML
 # deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -564,7 +603,8 @@ spec:
 ### Integration Management
 
 #### Webhook Configuration
-```bash
+
+```Shell
 # Test webhook connectivity
 curl -X POST $OCR_WEBHOOK_URL \
   -H "Content-Type: application/json" \
@@ -575,7 +615,8 @@ tail -f /var/log/ocr/ocr_processor.log | grep webhook
 ```
 
 #### Email Notifications
-```bash
+
+```Shell
 # Test email configuration
 python -c "
 from notification_manager import get_notification_manager
@@ -595,7 +636,8 @@ print('Email test:', nm.send_notification(test_msg))
 ## 📋 Troubleshooting Scripts
 
 ### System Health Script
-```bash
+
+```Shell
 #!/bin/bash
 # ocr_health_check.sh
 
@@ -625,7 +667,8 @@ echo -e "\n=== Health Check Complete ==="
 ```
 
 ### Performance Analysis Script
-```bash
+
+```Shell
 #!/bin/bash
 # ocr_performance_analysis.sh
 
@@ -658,7 +701,8 @@ iostat -x 1 5
 ### Complete System Recovery
 
 #### 1. Immediate Actions
-```bash
+
+```Shell
 # Stop all services
 docker-compose down
 
@@ -672,7 +716,8 @@ ps aux | grep -E "(ocr|python)" | grep -v grep
 ```
 
 #### 2. Data Preservation
-```bash
+
+```Shell
 # Backup current state
 cp -r /var/ocr/ /backup/ocr_emergency_$(date +%Y%m%d_%H%M%S)/
 
@@ -681,7 +726,8 @@ docker-compose exec postgres pg_dump -U ocr_user ocr_db > /backup/db_emergency.s
 ```
 
 #### 3. Service Restoration
-```bash
+
+```Shell
 # Start database first
 docker-compose up -d postgres
 
@@ -701,17 +747,19 @@ curl http://localhost:8000/health
 ### Contact Information
 
 #### Emergency Contacts
-- **Primary Administrator:** admin@yourcompany.com | +1-234-567-8900
-- **Backup Administrator:** backup-admin@yourcompany.com | +1-234-567-8901
-- **Development Team:** dev-team@yourcompany.com | +1-234-567-8902
-- **Infrastructure Team:** infra@yourcompany.com | +1-234-567-8903
+
+* **Primary Administrator:** <admin@yourcompany.com> | +1-234-567-8900
+* **Backup Administrator:** <backup-admin@yourcompany.com> | +1-234-567-8901
+* **Development Team:** <dev-team@yourcompany.com> | +1-234-567-8902
+* **Infrastructure Team:** <infra@yourcompany.com> | +1-234-567-8903
 
 #### Escalation Procedure
+
 1. **Level 1:** Try self-service recovery procedures
 2. **Level 2:** Contact primary administrator
 3. **Level 3:** Contact development team
 4. **Level 4:** Contact infrastructure team
 
----
+***
 
 **For urgent issues, please contact the emergency support team immediately.**

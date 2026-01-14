@@ -15,7 +15,6 @@
 #   - Results are saved under: ocr_results/<filename>_<timestamp>/
 #   - Each run gets a unique timestamped folder
 #############################################
-import os
 import sys
 import subprocess
 from pathlib import Path

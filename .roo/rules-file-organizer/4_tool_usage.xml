@@ -1,0 +1,271 @@
+<tool_usage_guide>
+  <tool_priorities>
+    <priority level="1">
+      <tool>execute_command</tool>
+      <when>Always use first for file operations and system commands</when>
+      <why>Essential for running scripts, file operations, and system utilities</why>
+    </priority>
+    <priority level="2">
+      <tool>list_files</tool>
+      <when>After execute_command to verify results</when>
+      <why>Confirms file operations completed successfully</why>
+    </priority>
+    <priority level="3">
+      <tool>read_file</tool>
+      <when>Need to analyze file content for organization decisions</when>
+      <why>Extracts metadata and content for intelligent categorization</why>
+    </priority>
+  </tool_priorities>
+
+  <file_operation_tools>
+    <tool name="execute_command">
+      <purpose>Perform file organization operations using terminal commands</purpose>
+      <when_to_use>
+        <scenario>Creating directory structures</scenario>
+        <scenario>Batch renaming files</scenario>
+        <scenario>Moving files to organized locations</scenario>
+        <scenario>Running organization scripts</scenario>
+      </when_to_use>
+      <syntax>
+        <command>mkdir -p "path/to/directory"</command>
+        <parameters>
+          <parameter name="command" required="true">
+            <description>The terminal command to execute</description>
+            <type>string</type>
+          </parameter>
+          <parameter name="cwd" required="false">
+            <description>Working directory for command execution</description>
+            <type>string</type>
+          </parameter>
+        </parameters>
+      </syntax>
+      <best_practices>
+        <practice>Use absolute paths to avoid confusion</practice>
+        <practice>Include error checking in scripts</practice>
+        <practice>Test commands on small samples first</practice>
+        <practice>Use quotes around paths with spaces</practice>
+      </best_practices>
+      <examples>
+        <example scenario="create_directory_structure">
+          <code>mkdir -p "organized_files/2024/01_Invoices" "organized_files/2024/02_Reports"</code>
+          <output>Creates nested directory structure</output>
+        </example>
+        <example scenario="batch_rename">
+          <code>find . -name "*.pdf" -exec bash -c 'mv "$1" "${1%.pdf}_backup.pdf"' _ {} \;</code>
+          <output>Renames all PDF files with _backup suffix</output>
+        </example>
+      </examples>
+    </tool>
+
+    <tool name="list_files">
+      <purpose>Survey directories and verify organization results</purpose>
+      <when_to_use>
+        <scenario>Before starting organization to assess current state</scenario>
+        <scenario>After operations to verify changes</scenario>
+        <scenario>Checking directory structure creation</scenario>
+      </when_to_use>
+      <syntax>
+        <command>list_files</command>
+        <parameters>
+          <parameter name="path" required="true">
+            <description>Directory path to list</description>
+            <type>string</type>
+          </parameter>
+          <parameter name="recursive" required="false">
+            <description>Whether to list recursively</description>
+            <type>boolean</type>
+          </parameter>
+        </parameters>
+      </syntax>
+      <best_practices>
+        <practice>Use recursive=true for full directory trees</practice>
+        <practice>Check results to ensure operations completed</practice>
+        <practice>Compare before/after listings</practice>
+      </best_practices>
+    </tool>
+
+    <tool name="read_file">
+      <purpose>Analyze file content for intelligent organization</purpose>
+      <when_to_use>
+        <scenario>Extracting metadata from documents</scenario>
+        <scenario>Reading configuration files</scenario>
+        <scenario>Analyzing script templates</scenario>
+      </when_to_use>
+      <syntax>
+        <command>read_file</command>
+        <parameters>
+          <parameter name="path" required="true">
+            <description>Path to file to read</description>
+            <type>string</type>
+          </parameter>
+        </parameters>
+      </syntax>
+      <best_practices>
+        <practice>Read sample files to understand content patterns</practice>
+        <practice>Use content analysis for categorization</practice>
+        <practice>Handle different file encodings</practice>
+      </best_practices>
+    </tool>
+  </file_operation_tools>
+
+  <content_analysis_tools>
+    <tool name="search_files">
+      <purpose>Find files matching patterns or containing specific content</purpose>
+      <when_to_use>
+        <scenario>Finding files by content patterns</scenario>
+        <scenario>Identifying files needing organization</scenario>
+        <scenario>Searching for specific file types</scenario>
+      </when_to_use>
+      <syntax>
+        <command>search_files</command>
+        <parameters>
+          <parameter name="path" required="true">
+            <description>Directory to search in</description>
+            <type>string</type>
+          </parameter>
+          <parameter name="regex" required="true">
+            <description>Regular expression pattern</description>
+            <type>string</type>
+          </parameter>
+          <parameter name="file_pattern" required="false">
+            <description>Glob pattern for file filtering</description>
+            <type>string</type>
+          </parameter>
+        </parameters>
+      </syntax>
+      <best_practices>
+        <practice>Use specific regex patterns for accuracy</practice>
+        <practice>Combine with file_pattern for efficiency</practice>
+        <practice>Test regex patterns first</practice>
+      </best_practices>
+      <examples>
+        <example scenario="find_invoices">
+          <regex>invoice|INVOICE</regex>
+          <file_pattern>*.pdf</file_pattern>
+          <output>Finds PDF files containing invoice references</output>
+        </example>
+      </examples>
+    </tool>
+
+    <tool name="codebase_search">
+      <purpose>Find files by semantic meaning rather than exact text</purpose>
+      <when_to_use>
+        <scenario>Finding organization-related scripts</scenario>
+        <scenario>Locating file processing utilities</scenario>
+        <scenario>Discovering existing organization patterns</scenario>
+      </when_to_use>
+      <syntax>
+        <command>codebase_search</command>
+        <parameters>
+          <parameter name="query" required="true">
+            <description>Natural language search query</description>
+            <type>string</type>
+          </parameter>
+          <parameter name="path" required="false">
+            <description>Directory to limit search</description>
+            <type>string</type>
+          </parameter>
+        </parameters>
+      </syntax>
+      <best_practices>
+        <practice>Use descriptive queries</practice>
+        <practice>Search entire workspace for comprehensive results</practice>
+        <practice>Follow up with read_file for detailed analysis</practice>
+      </best_practices>
+    </tool>
+  </content_analysis_tools>
+
+  <mcp_server_tools>
+    <tool name="use_mcp_tool">
+      <purpose>Leverage external services for advanced file processing</purpose>
+      <when_to_use>
+        <scenario>OCR processing for scanned documents</scenario>
+        <scenario>Advanced metadata extraction</scenario>
+        <scenario>Content analysis and categorization</scenario>
+      </when_to_use>
+      <available_servers>
+        <server name="puppeteer">
+          <purpose>Web scraping and automation</purpose>
+          <use_case>Extracting content from web-based documents</use_case>
+        </server>
+        <server name="context7">
+          <purpose>Documentation and code library access</purpose>
+          <use_case>Finding file processing libraries and examples</use_case>
+        </server>
+      </available_servers>
+      <syntax>
+        <command>use_mcp_tool</command>
+        <parameters>
+          <parameter name="server_name" required="true">
+            <description>Name of MCP server</description>
+            <type>string</type>
+          </parameter>
+          <parameter name="tool_name" required="true">
+            <description>Name of tool to execute</description>
+            <type>string</type>
+          </parameter>
+          <parameter name="arguments" required="true">
+            <description>Tool arguments as JSON object</description>
+            <type>object</type>
+          </parameter>
+        </parameters>
+      </syntax>
+      <best_practices>
+        <practice>Check server availability first</practice>
+        <practice>Use for specialized processing tasks</practice>
+        <practice>Handle API rate limits and errors</practice>
+      </best_practices>
+    </tool>
+  </mcp_server_tools>
+
+  <scripting_workflows>
+    <workflow name="bash_scripting">
+      <description>Using bash for file organization tasks</description>
+      <patterns>
+        <pattern>find + xargs for batch operations</pattern>
+        <pattern>while read loops for processing lists</pattern>
+        <pattern>conditional statements for file type checking</pattern>
+      </patterns>
+      <error_handling>
+        <practice>Use set -e to exit on errors</practice>
+        <practice>Check file existence before operations</practice>
+        <practice>Log operations for debugging</practice>
+      </error_handling>
+    </workflow>
+
+    <workflow name="python_scripting">
+      <description>Using Python for complex organization logic</description>
+      <libraries>
+        <library>pathlib for path operations</library>
+        <library>shutil for file operations</library>
+        <library>re for pattern matching</library>
+        <library>datetime for date handling</library>
+      </libraries>
+      <patterns>
+        <pattern>Path.rglob() for recursive file finding</pattern>
+        <pattern>Regex patterns for content extraction</pattern>
+        <pattern>Try/except blocks for error handling</pattern>
+      </patterns>
+    </workflow>
+  </scripting_workflows>
+
+  <error_handling_strategies>
+    <strategy name="command_failures">
+      <approach>Check exit codes and handle failures gracefully</approach>
+      <practice>Log errors and continue with remaining files</practice>
+      <practice>Provide clear error messages to user</practice>
+    </strategy>
+
+    <strategy name="permission_issues">
+      <approach>Check permissions before operations</approach>
+      <practice>Request elevated permissions if needed</practice>
+      <practice>Skip inaccessible files with notification</practice>
+    </strategy>
+
+    <strategy name="duplicate_files">
+      <approach>Detect and handle naming conflicts</approach>
+      <practice>Rename duplicates with suffixes</practice>
+      <practice>Compare file contents for true duplicates</practice>
+    </strategy>
+  </error_handling_strategies>
+</tool_usage_guide>
