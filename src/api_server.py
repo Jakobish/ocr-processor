@@ -11,12 +11,12 @@ from pathlib import Path
 import uvicorn
 import threading
 from datetime import datetime
-from logger import log_manager
-from config import config
-from progress_tracker import progress_tracker
-from security_validator import security_validator
-from notification_manager import get_notification_manager
-from database_manager import get_database_manager
+from .logger import log_manager
+from .config import config
+from .progress_tracker import progress_tracker
+from .security_validator import security_validator
+from .notification_manager import get_notification_manager
+from .database_manager import get_database_manager
 
 
 # Pydantic models for API
@@ -155,26 +155,28 @@ class OCRAPIServer:
             start_time = datetime.now()
 
             # Log request
-            log_manager.logger.info(
-                "API request",
-                method=request.method,
-                url=str(request.url),
-                client=request.client.host if request.client else "unknown",
-                event_type="api_request"
-            )
+            if log_manager and log_manager.logger:
+                log_manager.logger.info(
+                    "API request",
+                    method=request.method,
+                    url=str(request.url),
+                    client=request.client.host if request.client else "unknown",
+                    event_type="api_request"
+                )
 
             response = await call_next(request)
 
             # Log response
             process_time = (datetime.now() - start_time).total_seconds()
-            log_manager.logger.info(
-                "API response",
-                method=request.method,
-                url=str(request.url),
-                status_code=response.status_code,
-                process_time=process_time,
-                event_type="api_response"
-            )
+            if log_manager and log_manager.logger:
+                log_manager.logger.info(
+                    "API response",
+                    method=request.method,
+                    url=str(request.url),
+                    status_code=response.status_code,
+                    process_time=process_time,
+                    event_type="api_response"
+                )
 
             return response
 
@@ -191,7 +193,7 @@ class OCRAPIServer:
             if self.database_manager:
                 try:
                     with self.database_manager.get_session() as session:
-                        session.execute("SELECT 1")
+                        session.execute(text("SELECT 1"))
                     services_status["database"] = "connected"
                 except Exception as e:
                     db_status = "unhealthy"
@@ -272,17 +274,19 @@ class OCRAPIServer:
                 # Start job in background
                 background_tasks.add_task(self._process_job_background, job_id)
 
-                log_manager.logger.info(
-                    "Job created via API",
-                    job_id=job_id,
-                    input_path=job_request.input_path,
-                    mode=job_request.mode
-                )
+                if log_manager and log_manager.logger:
+                    log_manager.logger.info(
+                        "Job created via API",
+                        job_id=job_id,
+                        input_path=job_request.input_path,
+                        mode=job_request.mode
+                    )
 
                 return {"job_id": job_id, "status": "created"}
 
             except Exception as e:
-                log_manager.logger.error("API job creation failed", error=str(e))
+                if log_manager and log_manager.logger:
+                    log_manager.logger.error("API job creation failed", error=str(e))
                 raise HTTPException(status_code=500, detail=str(e))
 
         @self.app.get("/jobs/{job_id}", response_model=OCRJobResponse)
@@ -343,11 +347,12 @@ class OCRAPIServer:
                     if validation_result.is_valid:
                         valid_files.append(file_path)
                     else:
-                        log_manager.logger.warning(
-                            "Invalid file in batch",
-                            file_path=file_path,
-                            issues=validation_result.issues
-                        )
+                        if log_manager and log_manager.logger:
+                            log_manager.logger.warning(
+                                "Invalid file in batch",
+                                file_path=file_path,
+                                issues=validation_result.issues
+                            )
 
                 if not valid_files:
                     raise HTTPException(status_code=400, detail="No valid files provided")
@@ -391,7 +396,8 @@ class OCRAPIServer:
                 }
 
             except Exception as e:
-                log_manager.error("Batch job creation failed", error=str(e))
+                if log_manager and log_manager.logger:
+                    log_manager.logger.error("Batch job creation failed", error=str(e))
                 raise HTTPException(status_code=500, detail=str(e))
 
         @self.app.post("/upload")
@@ -405,7 +411,7 @@ class OCRAPIServer:
             """Upload file for OCR processing"""
             try:
                 # Validate file
-                if not file.filename.lower().endswith('.pdf'):
+                if not file.filename or not file.filename.lower().endswith('.pdf'):
                     raise HTTPException(status_code=400, detail="Only PDF files are supported")
 
                 # Create temporary file
@@ -454,7 +460,8 @@ class OCRAPIServer:
             except HTTPException:
                 raise
             except Exception as e:
-                log_manager.logger.error("File upload failed", error=str(e))
+                if log_manager and log_manager.logger:
+                    log_manager.logger.error("File upload failed", error=str(e))
                 raise HTTPException(status_code=500, detail=str(e))
 
         @self.app.get("/download/{job_id}")
@@ -503,11 +510,12 @@ class OCRAPIServer:
                 )
 
         except Exception as e:
-            log_manager.logger.error(
-                "Background job processing failed",
-                job_id=job_id,
-                error=str(e)
-            )
+            if log_manager and log_manager.logger:
+                log_manager.logger.error(
+                    "Background job processing failed",
+                    job_id=job_id,
+                    error=str(e)
+                )
 
             progress_tracker.complete_job(job_id, success=False, error_message=str(e))
 
@@ -523,14 +531,16 @@ class OCRAPIServer:
     def start_server(self):
         """Start the API server"""
         if not self.config.enable_api:
-            log_manager.logger.info("API server disabled in configuration")
+            if log_manager and log_manager.logger:
+                log_manager.logger.info("API server disabled in configuration")
             return
 
-        log_manager.logger.info(
-            "Starting API server",
-            host=self.config.api_host,
-            port=self.config.api_port
-        )
+        if log_manager and log_manager.logger:
+            log_manager.logger.info(
+                "Starting API server",
+                host=self.config.api_host,
+                port=self.config.api_port
+            )
 
         uvicorn.run(
             self.app,

@@ -18,10 +18,10 @@ import zipfile
 from pathlib import Path
 from datetime import datetime
 from bs4 import BeautifulSoup
+import ocrmypdf
 from typing import Optional
 from PIL import Image, ImageDraw
 import fitz  # PyMuPDF
-import ocrmypdf
 from ocrmypdf.exceptions import InputFileError, PriorOcrFoundError
 
 class PDFOCRGUI:
@@ -395,7 +395,7 @@ class PDFOCRGUI:
         }
 
         if mode == "cli":
-            base_settings.update({'force_ocr': True, 'skip_text': False})
+            base_settings.update({'force_ocr': False, 'skip_text': True})
         elif mode == "force":
             base_settings.update({'force_ocr': True, 'skip_text': False})
         elif mode == "visual":

@@ -44,6 +44,7 @@ import fitz  # PyMuPDF
 import ocrmypdf
 from ocrmypdf.exceptions import InputFileError, PriorOcrFoundError
 
+
 def ensure_dir(path: Path):
     """Create directory if it doesn't exist."""
     path.mkdir(parents=True, exist_ok=True)

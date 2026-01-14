@@ -12,7 +12,7 @@ from enum import Enum
 import json
 from pathlib import Path
 import psutil
-from logger import log_manager
+from .logger import log_manager
 
 
 class JobStatus(Enum):

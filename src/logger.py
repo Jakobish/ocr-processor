@@ -9,10 +9,11 @@ from typing import Dict, Any, Optional
 from pathlib import Path
 from datetime import datetime
 import structlog
-from structlog.dev import ConsoleRenderer, JSONRenderer
+from structlog.dev import ConsoleRenderer
+from structlog.processors import JSONRenderer
 import requests
 import time
-from config import config
+from .config import config
 
 
 class RemoteLogHandler(logging.Handler):
@@ -217,7 +218,6 @@ class OCRLogManager:
             backupCount=2
         )
         perf_handler.setLevel(logging.INFO)
-        perf_handler.addFilter(lambda record: record.levelno >= logging.INFO)
         root_logger.addHandler(perf_handler)
 
     def get_logger(self, name: str):

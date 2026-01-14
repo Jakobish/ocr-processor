@@ -7,15 +7,12 @@ import magic
 import hashlib
 import mimetypes
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List
 from dataclasses import dataclass
 import re
-import logging
-from urllib.parse import urlparse
-import tempfile
 import shutil
 from datetime import datetime
-from logger import log_manager
+from .logger import log_manager
 
 
 @dataclass
@@ -315,7 +312,7 @@ class SecurityValidator:
 
             shutil.move(str(file_path), quarantine_path)
 
-            log_manager.logger.warning(
+            logger.warning(
                 "File quarantined",
                 file_path=str(file_path),
                 quarantine_path=str(quarantine_path),
@@ -326,7 +323,7 @@ class SecurityValidator:
             return str(quarantine_path)
 
         except Exception as e:
-            log_manager.logger.error(
+            logger.error(
                 "Quarantine failed",
                 file_path=str(file_path),
                 error=str(e),
@@ -381,11 +378,10 @@ class SecurityValidator:
             try:
                 version_part = header[5:8].decode('ascii')
                 float(version_part)
-            except:
+            except Exception:
                 return False
-
+            f.close()
             return True
-
         except Exception:
             return False
 

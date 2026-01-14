@@ -6,7 +6,11 @@
 # Docker
 Dockerfile
 docker-compose.yml
+docker-compose.dev.yml
 .dockerignore
+
+# CLI tools (not included in Docker)
+cli/
 
 # Documentation
 README.md

@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import threading
 from pathlib import Path
-from logger import log_manager
+from .logger import log_manager
 
 
 @dataclass

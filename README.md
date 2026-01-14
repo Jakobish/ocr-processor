@@ -2,10 +2,33 @@
 
 A comprehensive PDF OCR processing toolkit that combines multiple OCR approaches into a unified, feature-rich solution for document digitization and analysis.
 
+## 🏗️ Project Structure
+
+```
+ocr-processor/
+├── src/                    # Enterprise application code
+│   ├── api_server.py      # REST API server
+│   ├── config.py           # Configuration management
+│   ├── database_manager.py # Database operations
+│   ├── error_handler.py    # Error handling and recovery
+│   ├── logger.py           # Structured logging
+│   ├── notification_manager.py # Notifications and alerts
+│   ├── progress_tracker.py # Job progress tracking
+│   └── security_validator.py # Input validation and security
+├── cli/                    # Standalone CLI/GUI tools
+│   ├── ocr_combined.py     # Main OCR processing script
+│   ├── pdf_ocr_gui.py      # Graphical user interface
+│   └── ...                 # Other CLI utilities
+├── docker/                 # Docker configuration
+├── docs/                   # Documentation
+└── data/                   # Data directories (created automatically)
+```
+
 ## 🖥️ Available Interfaces
 
-- **📟 Command Line Interface**: `pdf-ocr-processor.py` - Full-featured CLI for automation and scripting
-- **🖼️ Graphical User Interface**: `pdf_ocr_gui.py` - User-friendly GUI for interactive processing
+- **🌐 REST API**: Enterprise API server with job management and monitoring
+- **📟 Command Line Interface**: Standalone CLI tools in `cli/` directory
+- **🖼️ Graphical User Interface**: Standalone GUI application
 
 ## 🎯 Overview
 
@@ -82,24 +105,53 @@ pip install numpy opencv-python
 
 ## 🚀 Quick Start
 
-### Command Line Interface
+### Docker Development Setup (Recommended)
+
+The easiest way to get started is using Docker:
+
+```bash
+# 1. Clone the repository
+git clone <repository-url>
+cd ocr-processor
+
+# 2. Copy environment file
+cp .env.example .env
+
+# 3. Start the development environment
+docker-compose -f docker-compose.dev.yml up --build
+
+# 4. Access the API at http://localhost:8000
+# API documentation available at http://localhost:8000/docs
+```
+
+### Manual Setup
+
+If you prefer to run locally:
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Install system dependencies (Ubuntu/Debian)
+sudo apt-get install tesseract-ocr tesseract-ocr-heb
+
+# Start the API server
+python -m src.api_server
+```
+
+### Standalone CLI Tools
+
+For command-line processing:
 
 ```bash
 # Process a single PDF (CLI mode - default)
-python pdf-ocr-processor.py document.pdf
+python cli/ocr_combined.py document.pdf
 
 # Process with force mode (complete OCR)
-python pdf-ocr-processor.py --mode force document.pdf
+python cli/ocr_combined.py --mode force document.pdf
 
-# Process with visual highlights
-python pdf-ocr-processor.py --mode visual document.pdf
-```
-
-### Graphical User Interface
-
-```bash
 # Launch the GUI
-python pdf_ocr_gui.py
+python cli/pdf_ocr_gui.py
 ```
 
 ### Directory Processing
