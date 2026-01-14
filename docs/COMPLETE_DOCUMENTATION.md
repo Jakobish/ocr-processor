@@ -31,7 +31,7 @@ The OCR Processor Enterprise is a comprehensive PDF OCR (Optical Character Recog
 
 ### Version Information
 
-- **Current Version**: 2.0.0
+- **Current Version**: 2.0.1
 - **Python Support**: 3.11+
 - **License**: Part of the VirtualBox Technologies toolkit
 
@@ -90,20 +90,27 @@ ocr-processor/
 │   ├── logger.py           # Structured logging (structlog)
 │   ├── notification_manager.py # Notifications and alerts
 │   ├── progress_tracker.py # Job progress tracking
-│   └── security_validator.py # Input validation and security
-├── cli/                    # Standalone CLI/GUI tools
-│   ├── ocr_combined.py     # Main OCR processing script
-│   ├── pdf_ocr_gui.py      # Graphical user interface
-│   └── ...                 # Other CLI utilities
+│   ├── security_validator.py # Input validation and security
+│   └── ocr_utils.py        # Core OCR processing utilities
+├── cli/                    # Unified CLI and GUI tools
+│   ├── ocr_combined.py     # Unified OCR processing script (all modes)
+│   ├── pdf_ocr_gui.py      # Full graphical user interface
+│   ├── pdf_ocr_gui_simple.py # Simple GUI (CLI mode only)
+│   └── PDF/                # Test PDF files
 ├── docker/                 # Docker configuration
 │   ├── Dockerfile
 │   ├── docker-compose.yml
 │   ├── nginx.conf
-│   └── init.sql
+│   ├── init.sql
+│   ├── filebeat.yml
+│   └── ssl/
 ├── docs/                   # Documentation
+│   ├── COMPLETE_DOCUMENTATION.md
 │   ├── ADMIN_GUIDE.md
 │   └── DEPLOYMENT.md
-└── tests/                  # Test files (if present)
+├── tests/                  # Test files
+│   └── test_ocr_utils.py
+└── requirements.txt        # Python dependencies
 ```
 
 ### System Architecture
@@ -1030,6 +1037,13 @@ This OCR processing suite is part of the VirtualBox Technologies toolkit and is 
 
 ## Changelog
 
+### Version 2.0.1
+
+- **CLI Consolidation**: Unified all CLI scripts into `ocr_combined.py`
+- **Removed Legacy Scripts**: Eliminated duplicate and outdated CLI tools
+- **Simplified Architecture**: Single source of truth for CLI processing
+- **Maintained Functionality**: All processing modes preserved in unified script
+
 ### Version 2.0.0
 
 - New REST API with FastAPI
@@ -1051,4 +1065,4 @@ This OCR processing suite is part of the VirtualBox Technologies toolkit and is 
 ---
 
 _Last updated: 2024-01-15_
-_Documentation version: 2.0.0_
+_Documentation version: 2.0.1_
