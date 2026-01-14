@@ -95,7 +95,7 @@ class PDFOCRGUI:
         ttk.Label(options_frame, text="Language:").grid(row=1, column=0, sticky=tk.W, pady=5)
         self.language = tk.StringVar(value="heb+eng")
         lang_combo = ttk.Combobox(options_frame, textvariable=self.language, width=15)
-        lang_combo['values'] = ('heb+eng', 'eng', 'heb', 'eng+fra', 'eng+deu', 'eng+spa')
+        lang_combo['values'] = ('heb+eng', 'eng', 'heb', 'eng+fra', 'eng+deu', 'eng+script/Hebrew+heb')
         lang_combo.grid(row=1, column=1, sticky=tk.W, padx=5, pady=5)
 
         # Archive options
@@ -383,26 +383,23 @@ class PDFOCRGUI:
     def _get_ocr_settings(self, mode: str, lang: str = "heb+eng"):
         """Get OCR settings based on mode."""
         base_settings = {
-            'deskew': True,
-            'output_type': 'pdfa',
-            'progress_bar': False,  # Disable for GUI
+            'deskew': False,
+            'output_type': 'pdf',
+            'progress_bar': True,  # Disable for GUI
             'skip_big': False,
-            'fast_web_view': True,
-            'optimize_images': True,
-            'clean': True,
+            'optimize_images': False,
+            'clean': False,
             'lang': lang,
-            'clean_final': True,
             'oversample': 300,
-            'jobs': 0,
-            'tesseract_config': '--psm 3',
+            'jobs': 0
         }
 
         if mode == "cli":
-            base_settings.update({'force_ocr': False, 'skip_text': True})
+            base_settings.update({'force_ocr': True, 'skip_text': False})
         elif mode == "force":
             base_settings.update({'force_ocr': True, 'skip_text': False})
         elif mode == "visual":
-            base_settings.update({'force_ocr': False, 'skip_text': True})
+            base_settings.update({'force_ocr': False, 'skip_text': False})
 
         return base_settings
 
@@ -443,8 +440,8 @@ class PDFOCRGUI:
 
             # Run OCR
             ocrmypdf.ocr(
-                pdf_file, pdf_output,
-                sidecar=sidecar_txt, hocr=hocr_output,
+                pdf_file, pdf_file,
+                sidecar='', 
                 **ocr_settings
             )
 
