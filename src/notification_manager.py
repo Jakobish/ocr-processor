@@ -5,16 +5,22 @@ Provides comprehensive notification system for job completion, status updates, a
 import smtplib
 import json
 import requests
-from email.mime.text import MimeText
-from email.mime.multipart import MimeMultipart
-from email.mime.base import MimeBase
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
 from email import encoders
-from typing import Dict, Any, List
-from dataclasses import dataclass
+from typing import Dict, Any, List, Optional
+from dataclasses import dataclass, field
 from datetime import datetime
 import threading
 from pathlib import Path
 from .logger import log_manager
+
+
+def safe_log(level: str, message: str, **kwargs):
+    """Safely log if logger is available"""
+    if log_manager and log_manager.logger:
+        getattr(log_manager.logger, level)(message, **kwargs)
 
 
 @dataclass
@@ -24,8 +30,8 @@ class NotificationMessage:
     body: str
     message_type: str  # 'success', 'error', 'warning', 'info'
     priority: str = 'normal'  # 'low', 'normal', 'high', 'urgent'
-    attachments: List[str] = None
-    metadata: Dict[str, Any] = None
+    attachments: List[str] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.attachments is None:
@@ -57,7 +63,7 @@ class EmailChannel(NotificationChannel):
         """Send email notification"""
         try:
             # Create message
-            msg = MimeMultipart()
+            msg = MIMEMultipart()
             msg['From'] = self.config.smtp_username
             msg['To'] = self.config.notification_email
             msg['Subject'] = message.subject
@@ -83,7 +89,7 @@ OCR Processor Enterprise Edition
 Generated: {datetime.now().isoformat()}
             """
 
-            msg.attach(MimeText(body, 'plain'))
+            msg.attach(MIMEText(body, 'plain'))
 
             # Add attachments
             for attachment_path in message.attachments:
@@ -93,7 +99,7 @@ Generated: {datetime.now().isoformat()}
             with self._get_smtp_connection() as server:
                 server.send_message(msg)
 
-            log_manager.logger.info(
+            safe_log('info',
                 "Email notification sent",
                 recipient=self.config.notification_email,
                 subject=message.subject,
@@ -103,7 +109,7 @@ Generated: {datetime.now().isoformat()}
             return True
 
         except Exception as e:
-            log_manager.logger.error(
+            safe_log('error',
                 "Email notification failed",
                 error=str(e),
                 recipient=self.config.notification_email,
@@ -116,7 +122,7 @@ Generated: {datetime.now().isoformat()}
         try:
             with self._get_smtp_connection() as server:
                 # Send test email
-                msg = MimeText("OCR Processor - Email channel test")
+                msg = MIMEText("OCR Processor - Email channel test")
                 msg['From'] = self.config.smtp_username
                 msg['To'] = self.config.notification_email
                 msg['Subject'] = "OCR Processor - Connection Test"
@@ -126,7 +132,7 @@ Generated: {datetime.now().isoformat()}
             return True
 
         except Exception as e:
-            log_manager.logger.error("Email connection test failed", error=str(e))
+            safe_log('error', "Email connection test failed", error=str(e))
             return False
 
     def _get_smtp_connection(self):
@@ -135,7 +141,7 @@ Generated: {datetime.now().isoformat()}
             try:
                 if self._connection:
                     self._connection.quit()
-            except:
+            except Exception:
                 pass
 
             self._connection = smtplib.SMTP(self.config.smtp_server, self.config.smtp_port)
@@ -144,7 +150,7 @@ Generated: {datetime.now().isoformat()}
 
         return self._connection
 
-    def _add_attachment(self, msg: MimeMultipart, file_path: str):
+    def _add_attachment(self, msg: MIMEMultipart, file_path: str):
         """Add file attachment to email"""
         try:
             path = Path(file_path)
@@ -160,7 +166,7 @@ Generated: {datetime.now().isoformat()}
 
             # Create attachment
             with open(path, 'rb') as attachment:
-                part = MimeBase('application', 'octet-stream')
+                part = MIMEBase('application', 'octet-stream')
                 part.set_payload(attachment.read())
                 encoders.encode_base64(part)
 
@@ -175,7 +181,7 @@ Generated: {datetime.now().isoformat()}
                 msg.attach(part)
 
         except Exception as e:
-            log_manager.logger.warning(
+            safe_log('warning',
                 "Failed to attach file",
                 file_path=file_path,
                 error=str(e)
@@ -188,7 +194,6 @@ class WebhookChannel(NotificationChannel):
     def __init__(self, config):
         self.config = config
         self.session = requests.Session()
-        self.session.timeout = 10
 
     def send(self, message: NotificationMessage) -> bool:
         """Send webhook notification"""
@@ -216,7 +221,7 @@ class WebhookChannel(NotificationChannel):
             )
 
             if response.status_code in [200, 201, 202, 204]:
-                log_manager.logger.info(
+                safe_log('info',
                     "Webhook notification sent",
                     webhook_url=self.config.webhook_url,
                     status_code=response.status_code,
@@ -224,7 +229,7 @@ class WebhookChannel(NotificationChannel):
                 )
                 return True
             else:
-                log_manager.logger.error(
+                safe_log('error',
                     "Webhook notification failed",
                     webhook_url=self.config.webhook_url,
                     status_code=response.status_code,
@@ -234,7 +239,7 @@ class WebhookChannel(NotificationChannel):
                 return False
 
         except requests.exceptions.RequestException as e:
-            log_manager.logger.error(
+            safe_log('error',
                 "Webhook request failed",
                 webhook_url=self.config.webhook_url,
                 error=str(e),
@@ -260,14 +265,14 @@ class WebhookChannel(NotificationChannel):
             return response.status_code in [200, 201, 202, 204]
 
         except Exception as e:
-            log_manager.logger.error("Webhook connection test failed", error=str(e))
+            safe_log('error', "Webhook connection test failed", error=str(e))
             return False
 
 
 class SlackChannel(NotificationChannel):
     """Slack notification channel"""
 
-    def __init__(self, webhook_url: str, channel: str = None):
+    def __init__(self, webhook_url: str, channel: Optional[str] = None):
         self.webhook_url = webhook_url
         self.channel = channel
         self.session = requests.Session()
@@ -302,7 +307,7 @@ class SlackChannel(NotificationChannel):
             }
 
             if self.channel:
-                payload['channel'] = self.channel
+                payload['channel'] = self.channel  # type: ignore
 
             response = self.session.post(
                 self.webhook_url,
@@ -311,14 +316,14 @@ class SlackChannel(NotificationChannel):
             )
 
             if response.status_code == 200:
-                log_manager.logger.info(
+                safe_log('info',
                     "Slack notification sent",
                     message_type=message.message_type,
                     priority=message.priority
                 )
                 return True
             else:
-                log_manager.logger.error(
+                safe_log('error',
                     "Slack notification failed",
                     status_code=response.status_code,
                     response_body=response.text[:500]
@@ -326,7 +331,7 @@ class SlackChannel(NotificationChannel):
                 return False
 
         except Exception as e:
-            log_manager.logger.error("Slack notification error", error=str(e))
+            safe_log('error', "Slack notification error", error=str(e))
             return False
 
     def test_connection(self) -> bool:
@@ -346,7 +351,7 @@ class SlackChannel(NotificationChannel):
             return response.status_code == 200
 
         except Exception as e:
-            log_manager.logger.error("Slack connection test failed", error=str(e))
+            safe_log('error', "Slack connection test failed", error=str(e))
             return False
 
 
@@ -379,7 +384,7 @@ class NotificationManager:
     def send_notification(self, message: NotificationMessage) -> bool:
         """Send notification through all configured channels"""
         if not self.channels:
-            log_manager.logger.debug(
+            safe_log('debug',
                 "No notification channels configured",
                 message_type=message.message_type
             )
@@ -392,13 +397,13 @@ class NotificationManager:
                 if channel.send(message):
                     success_count += 1
                 else:
-                    log_manager.logger.warning(
+                    safe_log('warning',
                         "Notification failed",
                         channel=channel_name,
                         message_type=message.message_type
                     )
             except Exception as e:
-                log_manager.logger.error(
+                safe_log('error',
                     "Notification channel error",
                     channel=channel_name,
                     error=str(e),
@@ -406,7 +411,7 @@ class NotificationManager:
                 )
 
         success = success_count > 0
-        log_manager.logger.info(
+        safe_log('info',
             "Notification attempt completed",
             message_type=message.message_type,
             success=success,
@@ -570,13 +575,13 @@ Please investigate this alert and take appropriate action.
         for channel_name, channel in self.channels.items():
             try:
                 results[channel_name] = channel.test_connection()
-                log_manager.logger.info(
+                safe_log('info',
                     "Channel test completed",
                     channel=channel_name,
                     success=results[channel_name]
                 )
             except Exception as e:
-                log_manager.logger.error(
+                safe_log('error',
                     "Channel test failed",
                     channel=channel_name,
                     error=str(e)
@@ -618,7 +623,7 @@ class NotificationScheduler:
         with self._lock:
             self.scheduled_notifications.append(scheduled_notification)
 
-        log_manager.logger.info(
+        safe_log('info',
             "Notification scheduled",
             notification_id=notification_id,
             delay_seconds=delay_seconds,
@@ -634,7 +639,7 @@ class NotificationScheduler:
                 if notification['id'] == notification_id:
                     del self.scheduled_notifications[i]
 
-                    log_manager.logger.info(
+                    safe_log('info',
                         "Notification cancelled",
                         notification_id=notification_id
                     )
@@ -664,7 +669,7 @@ class NotificationScheduler:
                         ).start()
 
             except Exception as e:
-                log_manager.logger.error("Scheduler error", error=str(e))
+                safe_log('error', "Scheduler error", error=str(e))
 
             threading.Event().wait(10)  # Check every 10 seconds
 

@@ -218,14 +218,16 @@ class DatabaseManager:
             # Create session factory
             self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
 
-            log_manager.logger.info(
-                "Database initialized",
-                database_url=self.database_config.url,
-                tables_created=len(Base.metadata.tables)
-            )
+            if log_manager and log_manager.logger:
+                log_manager.logger.info(
+                    "Database initialized",
+                    database_url=self.database_config.url,
+                    tables_created=len(Base.metadata.tables)
+                )
 
         except Exception as e:
-            log_manager.logger.error("Database initialization failed", error=str(e))
+            if log_manager and log_manager.logger:
+                log_manager.logger.error("Database initialization failed", error=str(e))
             raise
 
     @contextmanager
@@ -240,7 +242,8 @@ class DatabaseManager:
             session.commit()
         except Exception as e:
             session.rollback()
-            log_manager.logger.error("Database session error", error=str(e))
+            if log_manager and log_manager.logger:
+                log_manager.logger.error("Database session error", error=str(e))
             raise
         finally:
             session.close()
@@ -263,12 +266,13 @@ class DatabaseManager:
             session.flush()  # Get the ID without committing
             session.expunge(job_record)  # Detach from session for return
 
-        log_manager.logger.info(
-            "Job record created",
-            job_id=job_id,
-            input_path=input_path,
-            mode=mode
-        )
+        if log_manager and log_manager.logger:
+            log_manager.logger.info(
+                "Job record created",
+                job_id=job_id,
+                input_path=input_path,
+                mode=mode
+            )
 
         return job_record
 
@@ -277,20 +281,21 @@ class DatabaseManager:
         with self.get_session() as session:
             job_record = session.query(OCRJob).filter_by(job_id=job_id).first()
             if not job_record:
-                log_manager.logger.warning("Job record not found for update", job_id=job_id)
+                if log_manager and log_manager.logger:
+                    log_manager.logger.warning("Job record not found for update", job_id=job_id)
                 return False
 
             # Update status
-            job_record.status = status
+            job_record.status = status  # type: ignore
 
             # Update other fields based on status
-            if status == "running" and not job_record.started_at:
-                job_record.started_at = datetime.now()
+            if status == "running" and not job_record.started_at:  # type: ignore
+                job_record.started_at = datetime.now()  # type: ignore
             elif status in ["completed", "failed", "cancelled"]:
-                job_record.completed_at = datetime.now()
-                if job_record.started_at:
+                job_record.completed_at = datetime.now()  # type: ignore
+                if job_record.started_at:  # type: ignore
                     job_record.processing_time = (
-                        datetime.now() - job_record.started_at
+                        datetime.now() - job_record.started_at  # type: ignore
                     ).total_seconds()
 
             # Apply other updates
@@ -300,22 +305,23 @@ class DatabaseManager:
 
             # Create audit log
             self._create_audit_log(
-                session, job_record.id, "job_status_changed",
+                session, job_record.id, "job_status_changed",  # type: ignore
                 f"Job status changed to {status}",
-                {"old_status": job_record.status, "new_status": status, **updates}
+                {"old_status": job_record.status, "new_status": status, **updates}  # type: ignore
             )
 
-        log_manager.logger.debug(
-            "Job status updated",
-            job_id=job_id,
-            status=status,
-            updates=updates
-        )
+        if log_manager and log_manager.logger:
+            log_manager.logger.debug(
+                "Job status updated",
+                job_id=job_id,
+                status=status,
+                updates=updates
+            )
 
         return True
 
     def add_file_record(self, job_id: str, file_path: str, file_size: int,
-                       mime_type: str = None) -> Optional[OCRFile]:
+                       mime_type: Optional[str] = None) -> Optional[OCRFile]:
         """Add file processing record"""
         try:
             file_record = OCRFile(
@@ -333,11 +339,11 @@ class DatabaseManager:
                     return None
 
                 job_record.files.append(file_record)
-                job_record.total_files += 1
+                job_record.total_files += 1  # type: ignore
 
                 # Create audit log
                 self._create_audit_log(
-                    session, job_record.id, "file_added",
+                    session, job_record.id, "file_added",  # type: ignore
                     f"File added to job: {file_record.file_name}",
                     {"file_path": file_path, "file_size": file_size}
                 )
@@ -345,16 +351,17 @@ class DatabaseManager:
             return file_record
 
         except Exception as e:
-            log_manager.logger.error(
-                "Failed to add file record",
-                job_id=job_id,
-                file_path=file_path,
-                error=str(e)
-            )
+            if log_manager and log_manager.logger:
+                log_manager.logger.error(
+                    "Failed to add file record",
+                    job_id=job_id,
+                    file_path=file_path,
+                    error=str(e)
+                )
             return None
 
     def update_file_status(self, job_id: str, file_path: str, status: str,
-                          processing_time: float = None, **updates):
+                          processing_time: Optional[float] = None, **updates):
         """Update file processing status"""
         with self.get_session() as session:
             file_record = session.query(OCRFile).join(OCRJob).filter(
@@ -365,9 +372,9 @@ class DatabaseManager:
             if not file_record:
                 return False
 
-            file_record.status = status
+            file_record.status = status  # type: ignore
             if processing_time:
-                file_record.processing_time = processing_time
+                file_record.processing_time = processing_time  # type: ignore
 
             for key, value in updates.items():
                 if hasattr(file_record, key):
@@ -383,7 +390,7 @@ class DatabaseManager:
         return True
 
     def _create_audit_log(self, session: Session, job_id: int, event_type: str,
-                         message: str, details: Dict[str, Any] = None):
+                         message: str, details: Optional[Dict[str, Any]] = None):
         """Create audit log entry"""
         audit_log = AuditLog(
             job_id=job_id,
@@ -401,12 +408,12 @@ class DatabaseManager:
             job_record = session.query(OCRJob).filter_by(job_id=job_id).first()
             if job_record:
                 self._create_audit_log(
-                    session, job_record.id, event_type, message, details
+                    session, job_record.id, event_type, message, details  # type: ignore
                 )
 
     def record_performance_metric(self, metric_name: str, metric_value: float,
-                                metric_unit: str = None, job_id: str = None,
-                                file_path: str = None, **context):
+                                metric_unit: Optional[str] = None, job_id: Optional[str] = None,
+                                file_path: Optional[str] = None, **context):
         """Record performance metric"""
         with self.get_session() as session:
             metric_record = PerformanceMetrics(
@@ -444,7 +451,7 @@ class DatabaseManager:
                 'mode': job.mode,
                 'progress': job.progress,
                 'created_at': job.created_at.isoformat(),
-                'completed_at': job.completed_at.isoformat() if job.completed_at else None,
+                'completed_at': job.completed_at.isoformat() if job.completed_at else None,  # type: ignore
                 'processing_time': job.processing_time,
                 'total_files': job.total_files,
                 'processed_files': job.processed_files,
@@ -483,8 +490,8 @@ class DatabaseManager:
                 'language': job_record.language,
                 'progress': job_record.progress,
                 'created_at': job_record.created_at.isoformat(),
-                'started_at': job_record.started_at.isoformat() if job_record.started_at else None,
-                'completed_at': job_record.completed_at.isoformat() if job_record.completed_at else None,
+                'started_at': job_record.started_at.isoformat() if job_record.started_at else None,  # type: ignore
+                'completed_at': job_record.completed_at.isoformat() if job_record.completed_at else None,  # type: ignore
                 'processing_time': job_record.processing_time,
                 'total_files': job_record.total_files,
                 'processed_files': job_record.processed_files,
@@ -528,7 +535,7 @@ class DatabaseManager:
                 'total_files': total_files,
                 'successful_files': successful_files,
                 'failed_files': failed_files,
-                'success_rate': (successful_files / total_files * 100) if total_files > 0 else 0,
+                'success_rate': (successful_files / total_files * 100) if total_files > 0 else 0,  # type: ignore
                 'avg_processing_time': avg_processing_time,
                 'avg_files_per_job': avg_files_per_job,
                 'total_processing_time': total_processing_time
@@ -556,16 +563,18 @@ class DatabaseManager:
                     PerformanceMetrics.timestamp < cutoff_date
                 ).delete(synchronize_session=False)
 
-            log_manager.logger.info(
-                "Database cleanup completed",
-                deleted_jobs=deleted_jobs,
-                deleted_audit_logs=deleted_audit,
-                deleted_metrics=deleted_metrics,
-                cutoff_date=cutoff_date.isoformat()
-            )
+            if log_manager and log_manager.logger:
+                log_manager.logger.info(
+                    "Database cleanup completed",
+                    deleted_jobs=deleted_jobs,
+                    deleted_audit_logs=deleted_audit,
+                    deleted_metrics=deleted_metrics,
+                    cutoff_date=cutoff_date.isoformat()
+                )
 
         except Exception as e:
-            log_manager.logger.error("Database cleanup failed", error=str(e))
+            if log_manager and log_manager.logger:
+                log_manager.logger.error("Database cleanup failed", error=str(e))
 
 
 class DatabaseMigrationManager:
@@ -601,11 +610,12 @@ def downgrade():
         self.migration_dir.mkdir(exist_ok=True)
         migration_file.write_text(migration_content)
 
-        log_manager.logger.info(
-            "Migration script created",
-            migration_file=str(migration_file),
-            message=message
-        )
+        if log_manager and log_manager.logger:
+            log_manager.logger.info(
+                "Migration script created",
+                migration_file=str(migration_file),
+                message=message
+            )
 
         return migration_file
 
@@ -616,10 +626,12 @@ def downgrade():
             # For now, just ensure tables exist
             Base.metadata.create_all(bind=self.db_manager.engine)
 
-            log_manager.logger.info("Database migrations completed")
+            if log_manager and log_manager.logger:
+                log_manager.logger.info("Database migrations completed")
 
         except Exception as e:
-            log_manager.logger.error("Migration execution failed", error=str(e))
+            if log_manager and log_manager.logger:
+                log_manager.logger.error("Migration execution failed", error=str(e))
             raise
 
 

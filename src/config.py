@@ -77,60 +77,60 @@ class OCRConfig:
     def _load_from_env(self):
         """Load configuration from environment variables"""
         # Processing settings
-        if os.getenv("OCR_DEFAULT_LANGUAGE"):
-            self.default_language = os.getenv("OCR_DEFAULT_LANGUAGE")
-        if os.getenv("OCR_DEFAULT_MODE"):
-            self.default_mode = os.getenv("OCR_DEFAULT_MODE")
+        if (env_val := os.getenv("OCR_DEFAULT_LANGUAGE")) is not None:
+            self.default_language = env_val
+        if (env_val := os.getenv("OCR_DEFAULT_MODE")) is not None:
+            self.default_mode = env_val
 
         # Performance settings
-        if os.getenv("OCR_MAX_CONCURRENT_JOBS"):
-            self.max_concurrent_jobs = int(os.getenv("OCR_MAX_CONCURRENT_JOBS"))
-        if os.getenv("OCR_TIMEOUT_PER_FILE"):
-            self.timeout_per_file = int(os.getenv("OCR_TIMEOUT_PER_FILE"))
-        if os.getenv("OCR_MAX_FILE_SIZE"):
-            self.max_file_size = int(os.getenv("OCR_MAX_FILE_SIZE"))
+        if (env_val := os.getenv("OCR_MAX_CONCURRENT_JOBS")) is not None:
+            self.max_concurrent_jobs = int(env_val)
+        if (env_val := os.getenv("OCR_TIMEOUT_PER_FILE")) is not None:
+            self.timeout_per_file = int(env_val)
+        if (env_val := os.getenv("OCR_MAX_FILE_SIZE")) is not None:
+            self.max_file_size = int(env_val)
 
         # Output settings
-        if os.getenv("OCR_OUTPUT_BASE_DIR"):
-            self.output_base_dir = os.getenv("OCR_OUTPUT_BASE_DIR")
-        if os.getenv("OCR_ARCHIVE_ORIGINALS"):
-            self.archive_originals = os.getenv("OCR_ARCHIVE_ORIGINALS").lower() == "true"
-        if os.getenv("OCR_CREATE_ZIP"):
-            self.create_zip_archives = os.getenv("OCR_CREATE_ZIP").lower() == "true"
+        if (env_val := os.getenv("OCR_OUTPUT_BASE_DIR")) is not None:
+            self.output_base_dir = env_val
+        if (env_val := os.getenv("OCR_ARCHIVE_ORIGINALS")) is not None:
+            self.archive_originals = env_val.lower() == "true"
+        if (env_val := os.getenv("OCR_CREATE_ZIP")) is not None:
+            self.create_zip_archives = env_val.lower() == "true"
 
         # Logging settings
-        if os.getenv("OCR_LOG_LEVEL"):
-            self.log_level = os.getenv("OCR_LOG_LEVEL")
-        if os.getenv("OCR_LOG_TO_FILE"):
-            self.log_to_file = os.getenv("OCR_LOG_TO_FILE").lower() == "true"
-        if os.getenv("OCR_LOG_DIRECTORY"):
-            self.log_directory = os.getenv("OCR_LOG_DIRECTORY")
-        if os.getenv("OCR_REMOTE_LOG_URL"):
-            self.remote_log_url = os.getenv("OCR_REMOTE_LOG_URL")
+        if (env_val := os.getenv("OCR_LOG_LEVEL")) is not None:
+            self.log_level = env_val
+        if (env_val := os.getenv("OCR_LOG_TO_FILE")) is not None:
+            self.log_to_file = env_val.lower() == "true"
+        if (env_val := os.getenv("OCR_LOG_DIRECTORY")) is not None:
+            self.log_directory = env_val
+        if (env_val := os.getenv("OCR_REMOTE_LOG_URL")) is not None:
+            self.remote_log_url = env_val
             self.enable_remote_logging = True
 
         # Notification settings
-        if os.getenv("OCR_SMTP_SERVER"):
-            self.smtp_server = os.getenv("OCR_SMTP_SERVER")
-        if os.getenv("OCR_SMTP_PORT"):
-            self.smtp_port = int(os.getenv("OCR_SMTP_PORT"))
-        if os.getenv("OCR_NOTIFICATION_EMAIL"):
-            self.notification_email = os.getenv("OCR_NOTIFICATION_EMAIL")
+        if (env_val := os.getenv("OCR_SMTP_SERVER")) is not None:
+            self.smtp_server = env_val
+        if (env_val := os.getenv("OCR_SMTP_PORT")) is not None:
+            self.smtp_port = int(env_val)
+        if (env_val := os.getenv("OCR_NOTIFICATION_EMAIL")) is not None:
+            self.notification_email = env_val
             self.enable_notifications = True
-        if os.getenv("OCR_WEBHOOK_URL"):
-            self.webhook_url = os.getenv("OCR_WEBHOOK_URL")
+        if (env_val := os.getenv("OCR_WEBHOOK_URL")) is not None:
+            self.webhook_url = env_val
             self.enable_notifications = True
 
         # Database settings
-        if os.getenv("OCR_DATABASE_URL"):
-            self.database_url = os.getenv("OCR_DATABASE_URL")
+        if (env_val := os.getenv("OCR_DATABASE_URL")) is not None:
+            self.database_url = env_val
             self.enable_database = True
 
         # API settings
-        if os.getenv("OCR_API_PORT"):
-            self.api_port = int(os.getenv("OCR_API_PORT"))
-        if os.getenv("OCR_API_HOST"):
-            self.api_host = os.getenv("OCR_API_HOST")
+        if (env_val := os.getenv("OCR_API_PORT")) is not None:
+            self.api_port = int(env_val)
+        if (env_val := os.getenv("OCR_API_HOST")) is not None:
+            self.api_host = env_val
 
     def _load_from_file(self):
         """Load configuration from config file if it exists"""

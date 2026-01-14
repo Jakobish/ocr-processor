@@ -11,9 +11,10 @@ from pathlib import Path
 import uvicorn
 import threading
 from datetime import datetime
+from sqlalchemy import text
 from .logger import log_manager
 from .config import config
-from .progress_tracker import progress_tracker
+from .progress_tracker import progress_tracker, JobPriority
 from .security_validator import security_validator
 from .notification_manager import get_notification_manager
 from .database_manager import get_database_manager
@@ -70,6 +71,12 @@ class BatchJobCreate(BaseModel):
     language: str = Field(default="heb+eng", description="Language for OCR")
     priority: str = Field(default="normal", description="Job priority")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+
+    @validator('priority')
+    def validate_priority(cls, v):
+        if v not in ['low', 'normal', 'high', 'urgent']:
+            raise ValueError('Priority must be one of: low, normal, high, urgent')
+        return v
 
 
 class SystemStatus(BaseModel):
@@ -254,7 +261,7 @@ class OCRAPIServer:
                     input_path=job_request.input_path,
                     mode=job_request.mode,
                     language=job_request.language,
-                    priority=job_request.priority,
+                    priority=JobPriority[job_request.priority.upper()],
                     recursive=job_request.recursive,
                     archive_originals=job_request.archive_originals,
                     webhook_url=job_request.webhook_url,
@@ -367,7 +374,7 @@ class OCRAPIServer:
                         input_path=file_path,
                         mode=batch_request.mode,
                         language=batch_request.language,
-                        priority=batch_request.priority,
+                        priority=JobPriority[batch_request.priority.upper()],
                         metadata={
                             **batch_request.metadata,
                             "batch_job_id": batch_job_id
@@ -439,7 +446,7 @@ class OCRAPIServer:
                     input_path=str(temp_file_path),
                     mode=mode,
                     language=language,
-                    priority=priority,
+                    priority=JobPriority[priority.upper()],
                     metadata={"uploaded_file": True, "original_filename": file.filename}
                 )
 

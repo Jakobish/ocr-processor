@@ -11,8 +11,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 import json
 import smtplib
-from email.mime.text import MimeText
-from email.mime.multipart import MimeMultipart
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import requests
 
 
@@ -165,7 +165,7 @@ class RetryMechanism:
                 last_exception = e
 
                 # Don't retry non-recoverable errors
-                if hasattr(e, 'recoverable') and not e.recoverable:  # type: ignore
+                if isinstance(e, OCRError) and not e.recoverable:
                     raise e
 
                 if attempt == self.max_retries:
@@ -175,6 +175,7 @@ class RetryMechanism:
                 print(f"⏳ Retry attempt {attempt + 1}/{self.max_retries} after {delay:.1f}s delay")
                 time.sleep(delay)
 
+        assert last_exception is not None
         raise last_exception
 
 
@@ -205,7 +206,7 @@ class NotificationManager:
     def _send_email_notification(self, error: OCRError, context: ErrorContext):
         """Send email notification"""
         try:
-            msg = MimeMultipart()
+            msg = MIMEMultipart()
             msg['From'] = self.config.smtp_username
             msg['To'] = self.config.notification_email
             msg['Subject'] = f"OCR Processing Error: {error.category.value.title()}"
@@ -225,7 +226,7 @@ Recovery Possible: {error.recoverable}
 Context: {json.dumps(context.metadata, indent=2, default=str)}
             """
 
-            msg.attach(MimeText(body, 'plain'))
+            msg.attach(MIMEText(body, 'plain'))
 
             # Send email
             server = smtplib.SMTP(self.config.smtp_server, self.config.smtp_port)
@@ -387,19 +388,19 @@ class ErrorHandler:
             recovery_time = time.time() - recovery_start
             self._update_recovery_metrics(recovery_time, error.category)
 
-    def _network_recovery(self, error: NetworkError, context: ErrorContext) -> bool:
+    def _network_recovery(self, error: OCRError, context: ErrorContext) -> bool:
         """Network-specific recovery"""
         # Simple retry for now - could be enhanced with different endpoints/strategies
         time.sleep(2)
         return True
 
-    def _processing_recovery(self, error: ProcessingError, context: ErrorContext) -> bool:
+    def _processing_recovery(self, error: OCRError, context: ErrorContext) -> bool:
         """Processing-specific recovery"""
         # Could try different OCR settings, fallbacks, etc.
         time.sleep(1)
         return True
 
-    def _resource_recovery(self, error: SystemError, context: ErrorContext) -> bool:
+    def _resource_recovery(self, error: OCRError, context: ErrorContext) -> bool:
         """Resource-specific recovery"""
         # Could clean up temporary files, reduce batch size, etc.
         time.sleep(1)
@@ -439,7 +440,7 @@ def retry_on_failure(max_retries: int = 3, recoverable_only: bool = True):
             try:
                 return retry.execute(func, *args, **kwargs)
             except Exception as e:
-                if recoverable_only and hasattr(e, 'recoverable') and not e.recoverable:
+                if recoverable_only and isinstance(e, OCRError) and not e.recoverable:
                     raise e
                 raise e
 

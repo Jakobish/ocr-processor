@@ -4,7 +4,7 @@ A comprehensive PDF OCR processing toolkit that combines multiple OCR approaches
 
 ## 🏗️ Project Structure
 
-```
+```markdown
 ocr-processor/
 ├── src/                    # Enterprise application code
 │   ├── api_server.py      # REST API server
@@ -240,14 +240,14 @@ python pdf_ocr_gui.py
 
 ### Command Line Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `input_path` | PDF file or directory to process | **Required** |
-| `--mode` | Processing mode: `cli`, `force`, `visual` | `cli` |
-| `--lang` | Language(s) for OCR | `heb+eng` |
-| `--archive-dir` | Directory to backup original files | `None` |
-| `--no-recursive` | Disable recursive directory search | `False` |
-| `--log-file` | Main log file path | `ocr_combined.log` |
+| Option           | Description                               | Default            |
+|------------------|-------------------------------------------|--------------------|
+| `input_path`     | PDF file or directory to process          | **Required**       |
+| `--mode`         | Processing mode: `cli`, `force`, `visual` | `cli`              |
+| `--lang`         | Language(s) for OCR                       | `heb+eng`          |
+| `--archive-dir`  | Directory to backup original files        | `None`             |
+| `--no-recursive` | Disable recursive directory search        | `False`            |
+| `--log-file`     | Main log file path                        | `ocr_combined.log` |
 
 ### Processing Modes Explained
 

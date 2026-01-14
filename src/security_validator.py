@@ -53,7 +53,8 @@ class SecurityValidator:
             self.mime_detector = magic.Magic(mime=True)
             self.magic_detector = magic.Magic()
         except Exception as e:
-            log_manager.logger.warning("Magic library not available, using basic detection", error=str(e))
+            if log_manager and log_manager.logger:
+                log_manager.logger.warning("Magic library not available, using basic detection", error=str(e))
             self.mime_detector = None
             self.magic_detector = None
 
@@ -312,23 +313,25 @@ class SecurityValidator:
 
             shutil.move(str(file_path), quarantine_path)
 
-            logger.warning(
-                "File quarantined",
-                file_path=str(file_path),
-                quarantine_path=str(quarantine_path),
-                reason=reason,
-                event_type="file_quarantined"
-            )
+            if log_manager and log_manager.logger:
+                log_manager.logger.warning(
+                    "File quarantined",
+                    file_path=str(file_path),
+                    quarantine_path=str(quarantine_path),
+                    reason=reason,
+                    event_type="file_quarantined"
+                )
 
             return str(quarantine_path)
 
         except Exception as e:
-            logger.error(
-                "Quarantine failed",
-                file_path=str(file_path),
-                error=str(e),
-                event_type="quarantine_error"
-            )
+            if log_manager and log_manager.logger:
+                log_manager.logger.error(
+                    "Quarantine failed",
+                    file_path=str(file_path),
+                    error=str(e),
+                    event_type="quarantine_error"
+                )
             return ""
 
     def _check_path_traversal(self, path: str) -> bool:
@@ -396,9 +399,11 @@ class SecurityValidator:
             # Check for suspicious patterns
             for pattern in self.suspicious_patterns:
                 try:
-                    if re.search(pattern, content, re.IGNORECASE | re.MULTILINE):
+                    # Decode content to string for regex search
+                    content_str = content.decode('latin-1')  # Use latin-1 to avoid decoding errors
+                    if re.search(pattern, content_str, re.IGNORECASE | re.MULTILINE):
                         issues.append(f"Suspicious pattern detected: {pattern[:50]}...")
-                except:
+                except Exception:
                     continue
 
             # Check for embedded PE files (basic check)
@@ -526,21 +531,23 @@ class SecurityValidator:
             )
 
             if not is_safe:
-                log_manager.logger.warning(
-                    "Unsafe output path",
-                    output_path=output_path,
-                    event_type="unsafe_output_path"
-                )
+                if log_manager and log_manager.logger:
+                    log_manager.logger.warning(
+                        "Unsafe output path",
+                        output_path=output_path,
+                        event_type="unsafe_output_path"
+                    )
                 return False
 
             return True
 
         except Exception as e:
-            log_manager.logger.error(
-                "Output path validation error",
-                output_path=output_path,
-                error=str(e)
-            )
+            if log_manager and log_manager.logger:
+                log_manager.logger.error(
+                    "Output path validation error",
+                    output_path=output_path,
+                    error=str(e)
+                )
             return False
 
 
