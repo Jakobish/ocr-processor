@@ -1,30 +1,54 @@
 # AGENTS.md
 
-This file provides guidance to agents when working with code in this repository.
+Project guidance for AI coding agents working on this Python OCR application.
 
-## Build/Lint/Test Commands
+## Commands
 
-- **Run single test**: `python -m unittest tests.test_ocr_utils.TestOCRUtils.test_get_ocr_settings_cli_mode`
-- **Run all tests**: `python -m unittest tests/` or `python -m pytest tests/`
-- **Run CLI tool**: `python cli/ocr_combined.py --mode cli document.pdf`
-- **Start API server**: `python -m uvicorn src.api_server:app --host 0.0.0.0 --port 8000`
+- Install dependencies: `pip install -r requirements.txt`
+- Run one test: `python -m unittest tests.test_ocr_utils.TestOCRUtils.test_get_ocr_settings_cli_mode`
+- Run the suite: `python -m unittest tests/` or `python -m pytest tests/`
+- Run the CLI: `python cli/ocr_combined.py --mode cli document.pdf`
+- Run a GUI locally: `python cli/pdf_ocr_gui.py`
+- There is no configured Python lint or build command. The VS Code `dotnet build` task is unrelated.
 
-## Code Style Guidelines
+Do not assume the documented Uvicorn or Docker entry points work: `src/api_server.py` exposes `get_api_server(config)`, not a module-level `app`, and the current Docker image does not copy `cli/`. Verify API/container wiring before changing or documenting it.
 
-- **Error handling**: Always use custom error handler from `src/error_handler.py` with `ErrorContext` for structured error information
-- **Logging**: Use `log_manager` from `src/logger.py` for all logging, includes structured logging with event types
-- **Configuration**: Use dataclass-based config from `src/config.py` with environment variable loading (OCR_ prefix)
-- **OCR utilities**: Always use `OCRUtils` from `src/ocr_utils.py` instead of direct ocrmypdf calls
-- **File operations**: Use `FileUtils` from `src/ocr_utils.py` for consistent file handling and archiving
-- **Tesseract config**: Use `--psm 3` for page segmentation mode in OCR settings
+## Architecture
 
-## Project-Specific Patterns
+- `src/ocr_utils.py`: core OCR, file handling, and input collection (`OCRUtils`, `FileUtils`, `InputProcessor`)
+- `cli/ocr_combined.py`: command-line entry point
+- `cli/pdf_ocr_gui.py`: desktop GUI entry point
+- `src/api_server.py`: API server and job endpoints
+- `src/config.py`: dataclass configuration, JSON config loading, and `OCR_` environment variables
+- `src/progress_tracker.py`, `src/database_manager.py`, `src/notification_manager.py`: job state and integrations
+- `src/security_validator.py`: validate input before processing
 
-- **OCR modes**: Three modes with specific ocrmypdf settings:
-  - `cli`: `force_ocr=False, skip_text=True` (fast, preserves existing text)
-  - `force`: `force_ocr=True, skip_text=False` (thorough, replaces all text)
-  - `visual`: `force_ocr=False, skip_text=True` (preserves text, adds visual overlays)
-- **Output structure**: Results saved to `ocr_<mode>/<filename>_<timestamp>/` with PDF, text, log, and optional zip files
-- **Archive originals**: When `--archive-dir` specified, creates relative path structure in archive directory
-- **Language default**: `heb+eng` for Hebrew+English mixed documents
-- **API integration**: Jobs run as background tasks with progress tracking via `progress_tracker`
+## Implementation Rules
+
+- Call OCR through `OCRUtils`; do not call `ocrmypdf` directly.
+- Use `FileUtils` for output, archiving, and zip operations.
+- Use `ErrorContext` and the custom handler in `src/error_handler.py` for structured errors.
+- Use `log_manager` from `src/logger.py` for structured logging and include event types.
+- Use dataclass configuration from `src/config.py`; environment variables use the `OCR_` prefix.
+- Preserve Tesseract `--psm 3` in OCR settings.
+- Validate files with `security_validator` before OCR.
+- Route API job state through `progress_tracker` and database work through `database_manager`.
+
+## OCR Contract
+
+- Modes are `cli`, `force`, and `visual`.
+- `cli`: `force_ocr=False`, `skip_text=True`.
+- `force`: `force_ocr=True`, `skip_text=False`.
+- `visual`: `force_ocr=False`, `skip_text=True`.
+- Default language is `heb+eng`.
+- Results use `ocr_<mode>/<filename>_<timestamp>/` with PDF, text, and log output; force mode may also produce a zip.
+- When archiving originals, preserve their relative directory structure.
+
+## Documentation
+
+- [Complete technical documentation](docs/COMPLETE_DOCUMENTATION.md)
+- [Deployment guidance](docs/DEPLOYMENT.md)
+- [Administration and monitoring](docs/ADMIN_GUIDE.md)
+- [OCR utility tests](tests/test_ocr_utils.py)
+
+Keep this file focused on agent-discoverable conventions. Use the linked documents for detailed operational guidance. There is no indexed session history for this repository yet; use `/chronicle improve` after future work to refine these instructions from recurring friction.
