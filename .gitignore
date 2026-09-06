@@ -148,3 +148,14 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 # End of https://www.toptal.com/developers/gitignore/api/python
+
+# Enterprise development and private runtime data
+web/node_modules/
+web/.next/
+web/playwright-report/
+web/test-results/
+web/tsconfig.tsbuildinfo
+secrets/
+backup-staging/
+quarantine/
+.superpowers/

@@ -3,7 +3,11 @@ Enterprise OCR Security Validation and Input Sanitization
 Provides comprehensive security checks, input validation, and threat protection
 """
 import os
-import magic
+try:
+    import magic
+except ImportError:
+    magic = None
+import fitz
 import hashlib
 import mimetypes
 from pathlib import Path
@@ -368,76 +372,39 @@ class SecurityValidator:
             return 'unknown'
 
     def _is_valid_pdf_structure(self, file_path: Path) -> bool:
-        """Check if file has valid PDF structure"""
+        """Parse the actual document; a PDF-looking header alone is insufficient."""
         try:
-            with open(file_path, 'rb') as f:
-                header = f.read(8)
-
-            # PDF files should start with %PDF-
-            if not header.startswith(b'%PDF-'):
-                return False
-
-            # Check for PDF version
-            try:
-                version_part = header[5:8].decode('ascii')
-                float(version_part)
-            except Exception:
-                return False
-            f.close()
-            return True
+            with fitz.open(file_path) as document:
+                return document.is_pdf and document.page_count > 0
         except Exception:
             return False
 
     def _scan_for_suspicious_content(self, file_path: Path) -> List[str]:
-        """Scan file for suspicious patterns"""
-        issues = []
-
+        """Inspect PDF objects, not regex signatures inside ordinary page streams."""
         try:
-            with open(file_path, 'rb') as f:
-                content = f.read(1024 * 1024)  # Read first 1MB for scanning
-
-            # Check for suspicious patterns
-            for pattern in self.suspicious_patterns:
-                try:
-                    # Decode content to string for regex search
-                    content_str = content.decode('latin-1')  # Use latin-1 to avoid decoding errors
-                    if re.search(pattern, content_str, re.IGNORECASE | re.MULTILINE):
-                        issues.append(f"Suspicious pattern detected: {pattern[:50]}...")
-                except Exception:
-                    continue
-
-            # Check for embedded PE files (basic check)
-            if b'MZ\x90\x00' in content[:1024]:
-                issues.append("Potential embedded executable detected")
-
-        except Exception as e:
-            issues.append(f"Content scanning error: {str(e)}")
-
-        return issues
+            with fitz.open(file_path) as document:
+                if document.needs_pass:
+                    return []  # Reported by the encryption check.
+                if document.embfile_count():
+                    return ['Embedded attachments are not accepted']
+                for xref in range(1, document.xref_length()):
+                    for key in document.xref_get_keys(xref):
+                        if key in ('JS', 'JavaScript', 'RichMedia', 'XFA'):
+                            return ['Active PDF content is not accepted']
+                        if key == 'S':
+                            _, value = document.xref_get_key(xref, key)
+                            if value in ('/JavaScript', '/Launch', '/SubmitForm', '/ImportData'):
+                                return ['Active PDF actions are not accepted']
+                return []
+        except Exception:
+            return ['PDF content could not be safely inspected']
 
     def _check_pdf_encryption(self, file_path: Path) -> bool:
-        """Check if PDF is encrypted"""
         try:
-            # Basic check for encryption markers
-            with open(file_path, 'rb') as f:
-                content = f.read(2048)
-
-            # Look for encryption dictionary markers
-            encryption_markers = [
-                b'/Encrypt',
-                b'/Type/Encrypt',
-                b'/StmF',
-                b'/StrF'
-            ]
-
-            for marker in encryption_markers:
-                if marker in content:
-                    return True
-
-            return False
-
+            with fitz.open(file_path) as document:
+                return document.is_encrypted
         except Exception:
-            return False
+            return True
 
     def _check_embedded_files(self, file_path: Path) -> bool:
         """Check for embedded files in PDF"""

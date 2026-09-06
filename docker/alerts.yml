@@ -1,0 +1,33 @@
+groups:
+  - name: ocr
+    rules:
+      - alert: OCRApiUnavailable
+        expr: up{job="ocr"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "OCR API metrics unavailable"}
+      - alert: OCRQueueStalled
+        expr: ocr_queue_oldest_seconds > 900
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: "OCR queue has waited over fifteen minutes"}
+      - alert: OCRDiskNearlyFull
+        expr: ocr_storage_free_bytes / ocr_storage_total_bytes < 0.15
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "OCR storage has less than 15% free space"}
+      - alert: OCRBackupFailed
+        expr: ocr_backup_success == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: "Encrypted OCR backup failed"}
+      - alert: OCRBackupOverdue
+        expr: time() - ocr_backup_last_success_timestamp_seconds > 90000 or absent(ocr_backup_last_success_timestamp_seconds)
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "No successful OCR backup in the past 25 hours"}
+      - alert: OCRWorkerNotReporting
+        expr: ocr_worker_heartbeat_age_seconds > 60
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "Active OCR worker heartbeat is stale"}

@@ -326,6 +326,7 @@ class OCRUtils:
         mode: str,
         lang: str = "heb+eng",
         archive_dir: Optional[Path] = None,
+        *, raise_errors: bool = False,
     ) -> bool:
         """Process a PDF file with OCR based on specified mode.
 
@@ -335,6 +336,7 @@ class OCRUtils:
             mode: OCR processing mode
             lang: Language for OCR
             archive_dir: Optional archive directory
+            raise_errors: Propagate unexpected failures for durable worker retries
 
         Returns:
             bool: True if processing succeeded, False otherwise
@@ -352,7 +354,11 @@ class OCRUtils:
             log_file = output_base / "ocr_log.txt"
 
             # Get OCR settings for the mode
-            ocr_settings = OCRUtils.get_ocr_settings(mode, lang)
+            ocr_settings = dict(OCRUtils.get_ocr_settings(mode, lang))
+            # Public settings retain CLI compatibility; normalize at the library boundary.
+            ocr_settings["language"] = ocr_settings.pop("lang", lang)
+            ocr_settings.pop("tesseract_config", None)
+            ocr_settings["tesseract_pagesegmode"] = 3
 
             # Set up logging for this file
             file_logger = logging.getLogger(f"ocr_process_{pdf_file.stem}")
@@ -417,6 +423,8 @@ class OCRUtils:
                 )
             return False
         except Exception as e:
+            if raise_errors:
+                raise
             print(f"❌ Error processing {pdf_file.name}: {e}")
             if log_manager and log_manager.logger:
                 log_manager.logger.error(

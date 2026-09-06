@@ -9,8 +9,6 @@ docker-compose.yml
 docker-compose.dev.yml
 .dockerignore
 
-# CLI tools (not included in Docker)
-cli/
 
 # Documentation
 README.md
@@ -168,3 +166,8 @@ temp/
 *.njsproj
 *.sln
 *.sw?
+data/
+web/node_modules/
+web/.next/
+secrets/
+backup-staging/

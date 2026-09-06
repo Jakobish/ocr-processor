@@ -1,199 +1,106 @@
+x-ocr: &ocr
+  build: .
+  image: ocr-processor:enterprise
+  restart: unless-stopped
+  init: true
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  environment: &ocr-env
+    OCR_DATABASE_URL: postgresql+psycopg://ocr:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/ocr
+    OCR_STORAGE_ROOT: /app/data
+    OCR_IDENTITY_URL: ${OCR_IDENTITY_URL:?Set trusted identity introspection URL}
+    OCR_IDENTITY_SECRET: ${OCR_IDENTITY_SECRET:?Set identity server credential}
+    OCR_GLOBAL_CONCURRENCY: "2"
+    OCR_TENANT_CONCURRENCY: "1"
+  volumes: ["ocr_data:/app/data"]
+  depends_on:
+    migrate: {condition: service_completed_successfully}
+  pids_limit: 256
+  mem_limit: 2g
 services:
-  # Main OCR API Server
-  ocr-api:
-    build: .
-    image: ocr-processor:2.0.0
-    container_name: ocr-api
-    command: api
-    ports:
-      - "8000:8000"
-    environment:
-      # Application Configuration
-      - OCR_LOG_LEVEL=INFO
-      - OCR_DEFAULT_LANGUAGE=heb+eng
-      - OCR_DEFAULT_MODE=cli
-      - OCR_MAX_CONCURRENT_JOBS=4
-      - OCR_MAX_FILE_SIZE=104857600
-      - OCR_TIMEOUT_PER_FILE=300
-
-      # API Configuration
-      - OCR_ENABLE_API=true
-      - OCR_API_HOST=0.0.0.0
-      - OCR_API_PORT=8000
-
-      # Database Configuration
-      - OCR_ENABLE_DATABASE=true
-      - OCR_DATABASE_URL=postgresql://ocr_user:ocr_password@postgres:5432/ocr_db
-
-      # Notification Configuration
-      - OCR_ENABLE_NOTIFICATIONS=true
-      - OCR_NOTIFICATION_EMAIL=admin@example.com
-      - OCR_SMTP_SERVER=smtp.gmail.com
-      - OCR_SMTP_PORT=587
-      - OCR_SMTP_USERNAME=${SMTP_USERNAME}
-      - OCR_SMTP_PASSWORD=${SMTP_PASSWORD}
-      - OCR_WEBHOOK_URL=${WEBHOOK_URL}
-
-      # Logging Configuration
-      - OCR_LOG_TO_FILE=true
-      - OCR_LOG_DIRECTORY=/app/logs
-      - OCR_REMOTE_LOG_URL=${REMOTE_LOG_URL}
-
-    volumes:
-      # Mount data directories
-      - ./data/input:/app/data/input:ro
-      - ./data/output:/app/data/output
-      - ./data/archive:/app/data/archive
-      - ./logs:/app/logs
-      - ./temp:/app/temp
-
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-    restart: unless-stopped
-
-    # Resource limits
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 4G
-        reservations:
-          cpus: '0.5'
-          memory: 1G
-
-  # OCR Processing Worker
-  ocr-worker:
-    build: .
-    image: ocr-processor:2.0.0
-    container_name: ocr-worker
-    command: python ocr_combined.py --mode force /app/data/input
-    environment:
-      # Same configuration as API
-      - OCR_LOG_LEVEL=INFO
-      - OCR_DEFAULT_LANGUAGE=heb+eng
-      - OCR_DEFAULT_MODE=force
-      - OCR_MAX_CONCURRENT_JOBS=2
-      - OCR_MAX_FILE_SIZE=104857600
-
-      # Worker specific settings
-      - OCR_OUTPUT_BASE_DIR=/app/data/output
-      - OCR_LOG_TO_FILE=true
-      - OCR_LOG_DIRECTORY=/app/logs
-
-    volumes:
-      # Mount data directories
-      - ./data/input:/app/data/input:ro
-      - ./data/output:/app/data/output
-      - ./data/archive:/app/data/archive
-      - ./logs:/app/logs
-
-    depends_on:
-      - ocr-api
-
-    healthcheck:
-      test: ["CMD", "pgrep", "-f", "python.*ocr_combined"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-    restart: unless-stopped
-
-    # Resource limits for worker (can be higher for processing)
-    deploy:
-      resources:
-        limits:
-          cpus: '4.0'
-          memory: 8G
-        reservations:
-          cpus: '1.0'
-          memory: 2G
-
-  # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
-    container_name: ocr-postgres
+    image: postgres:16-alpine
     environment:
-      - POSTGRES_DB=ocr_db
-      - POSTGRES_USER=ocr_user
-      - POSTGRES_PASSWORD=ocr_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "5432:5432"
-
+      POSTGRES_DB: ocr
+      POSTGRES_USER: ocr
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes: ["enterprise_postgres_data:/var/lib/postgresql/data"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ocr_user -d ocr_db"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ocr -d ocr"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+  migrate:
+    <<: *ocr
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres: {condition: service_healthy}
+  api:
+    <<: *ocr
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health/ready"]
+      interval: 15s
       timeout: 5s
       retries: 5
-
-    restart: unless-stopped
-
-  # Redis for Caching and Queue Management (Optional)
-  redis:
-    image: redis:7-alpine
-    container_name: ocr-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
-
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-    restart: unless-stopped
-
-  # Nginx Reverse Proxy (Optional)
-  nginx:
-    image: nginx:alpine
-    container_name: ocr-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./docker/ssl:/etc/nginx/ssl:ro
-      - ./logs/nginx:/var/log/nginx
+      start_period: 30s
+  worker:
+    <<: *ocr
+    command: ["python", "-m", "enterprise.worker"]
+    mem_limit: 4g
+    cpus: 2
+    deploy:
+      replicas: 2
+  maintenance:
+    <<: *ocr
+    command: ["python", "-m", "enterprise.maintenance"]
+  web:
+    build: ./web
+    environment:
+      OCR_API_URL: http://api:8000
+      OCR_PUBLIC_ORIGIN: https://${OCR_DOMAIN}
+      OCR_LOGIN_URL: ${OCR_LOGIN_URL:-}
+      OCR_MEMBERS_URL: ${OCR_MEMBERS_URL:-}
+      OCR_IDENTITY_URL: ${OCR_IDENTITY_URL}
+      OCR_IDENTITY_SECRET: ${OCR_IDENTITY_SECRET}
     depends_on:
-      - ocr-api
-
+      api: {condition: service_healthy}
     restart: unless-stopped
-
-  # Filebeat for Log Shipping (Optional)
-  filebeat:
-    image: docker.elastic.co/beats/filebeat:8.11.0
-    container_name: ocr-filebeat
+    init: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+  proxy:
+    image: caddy:2-alpine
+    ports: ["80:80", "443:443"]
+    environment:
+      OCR_DOMAIN: ${OCR_DOMAIN:?Set public DNS hostname}
     volumes:
-      - ./logs:/var/log/ocr:ro
-      - ./docker/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-    depends_on:
-      - ocr-api
-      - ocr-worker
-
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [web]
     restart: unless-stopped
-
+  prometheus:
+    image: prom/prometheus:v3.9.1
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+  alertmanager:
+    image: prom/alertmanager:v0.31.1
+    volumes:
+      - ./secrets/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    restart: unless-stopped
+  backup-metrics:
+    image: prom/node-exporter:v1.10.2
+    command: ["--collector.disable-defaults", "--collector.textfile", "--collector.textfile.directory=/metrics"]
+    volumes: ["./backup-staging/metrics:/metrics:ro"]
+    restart: unless-stopped
 volumes:
-  postgres_data:
-    driver: local
-
-  redis_data:
-    driver: local
-
-networks:
-  default:
-    name: ocr-network
-    driver: bridge
+  enterprise_postgres_data:
+  ocr_data:
+  caddy_data:
+  caddy_config:
+  prometheus_data:

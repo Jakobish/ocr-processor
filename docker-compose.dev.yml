@@ -1,83 +1,21 @@
+# Optional override: docker compose -f docker-compose.yml -f docker-compose.dev.yml up api worker maintenance web
+# Only localhost is exposed. Identity checks remain enabled.
 services:
-  # Main OCR API Server
-  ocr-api:
-    build: .
-    image: ocr-processor:dev
-    container_name: ocr-api-dev
-    command: api
-    ports:
-      - "8000:8000"
+  api:
+    ports: ["127.0.0.1:8000:8000"]
+    volumes: ["./src:/app/src:ro"]
+    command: ["uvicorn", "enterprise.api:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+  web:
+    ports: ["127.0.0.1:3000:3000"]
     environment:
-      # Application Configuration
-      - OCR_LOG_LEVEL=INFO
-      - OCR_DEFAULT_LANGUAGE=heb+eng
-      - OCR_DEFAULT_MODE=cli
-      - OCR_MAX_CONCURRENT_JOBS=2
-      - OCR_MAX_FILE_SIZE=104857600
-      - OCR_TIMEOUT_PER_FILE=300
-
-      # API Configuration
-      - OCR_ENABLE_API=true
-      - OCR_API_HOST=0.0.0.0
-      - OCR_API_PORT=8000
-
-      # Database Configuration
-      - OCR_ENABLE_DATABASE=true
-      - OCR_DATABASE_URL=postgresql://ocr_user:ocr_password@postgres:5432/ocr_db
-
-      # Disable notifications for dev
-      - OCR_ENABLE_NOTIFICATIONS=false
-
-      # Logging Configuration
-      - OCR_LOG_TO_FILE=true
-      - OCR_LOG_DIRECTORY=/app/logs
-
-    volumes:
-      # Mount data directories
-      - ./data/input:/app/data/input:ro
-      - ./data/output:/app/data/output
-      - ./logs:/app/logs
-
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-    restart: unless-stopped
-
-  # PostgreSQL Database
+      OCR_PUBLIC_ORIGIN: http://localhost:3000
   postgres:
-    image: postgres:15-alpine
-    container_name: ocr-postgres-dev
-    environment:
-      - POSTGRES_DB=ocr_db
-      - POSTGRES_USER=ocr_user
-      - POSTGRES_PASSWORD=ocr_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "5432:5432"
-
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ocr_user -d ocr_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
-    driver: local
-
-networks:
-  default:
-    name: ocr-dev-network
-    driver: bridge
+    ports: ["127.0.0.1:5432:5432"]
+  proxy:
+    profiles: [production]
+  prometheus:
+    profiles: [monitoring]
+  alertmanager:
+    profiles: [monitoring]
+  backup-metrics:
+    profiles: [monitoring]

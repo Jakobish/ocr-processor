@@ -1,0 +1,17 @@
+{$OCR_DOMAIN} {
+    encode zstd gzip
+    @private path /api/v1/metrics /health/* /metrics
+    respond @private 404
+    @integration path /api/v1/*
+    handle @integration {
+        reverse_proxy api:8000
+    }
+    handle {
+        reverse_proxy web:3000
+    }
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy same-origin
+        Strict-Transport-Security "max-age=31536000"
+    }
+}

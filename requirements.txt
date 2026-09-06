@@ -53,3 +53,7 @@ typing-inspection==0.4.2
 urllib3==2.6.3
 uvicorn==0.40.0
 wrapt==2.0.1
+httpx==0.28.1
+psycopg[binary]==3.3.5
+python-multipart==0.0.32
+prometheus-client==0.24.1

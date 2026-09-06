@@ -1,0 +1,52 @@
+name: Enterprise checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ocr
+          POSTGRES_PASSWORD: test_only
+          POSTGRES_DB: ocr_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ocr -d ocr_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      PYTHONPATH: src
+      OCR_DATABASE_URL: postgresql+psycopg://ocr:test_only@localhost:5432/ocr_test
+      OCR_TEST_DATABASE_URL: postgresql+psycopg://ocr:test_only@localhost:5432/ocr_test
+      OCR_STORAGE_ROOT: /tmp/ocr-test-data
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12', cache: pip}
+      - run: sudo apt-get update && sudo apt-get install -y tesseract-ocr tesseract-ocr-heb tesseract-ocr-eng ghostscript qpdf libmagic1 poppler-utils unpaper
+      - run: pip install -r requirements.txt
+      - run: alembic upgrade head
+      - run: python -m pytest tests/ -q
+      - run: bash -n scripts/backup.sh scripts/restore.sh
+      - run: docker compose config --quiet
+        env:
+          POSTGRES_PASSWORD: test_only
+          OCR_IDENTITY_URL: https://identity.example.org/internal/introspect
+          OCR_IDENTITY_SECRET: ci-validation
+          OCR_DOMAIN: ocr.example.org
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run: {working-directory: web}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22', cache: npm, cache-dependency-path: web/package-lock.json}
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+      - run: npm run test:e2e
