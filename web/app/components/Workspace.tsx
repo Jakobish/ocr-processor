@@ -1,25 +1,768 @@
-'use client';
-import {useCallback,useEffect,useRef,useState} from 'react';
-import type {Identity} from '../../lib/security';
-import {api,upload,type Job} from '../../lib/api';
-const labels:Record<string,string>={queued:'בתור',running:'בעיבוד',retry_wait:'ממתין לניסיון נוסף',cancel_requested:'מבטל',cancelled:'בוטל',failed:'נכשל',completed:'הושלם'};
-const date=(v?:string)=>v?new Date(v).toLocaleString('he-IL',{dateStyle:'short',timeStyle:'short'}):'—';
-const active=(j:Job)=>['queued','running','retry_wait','cancel_requested'].includes(j.status);
-type UploadRow={key:string;file:File;progress:number;id?:string;error?:string};
-type Key={id:string;name:string;scopes:string[];revoked_at?:string};
-export default function Workspace({loginUrl,membersUrl}:{loginUrl?:string;membersUrl?:string}){
- const [profile,setProfile]=useState<Identity>();const [auth,setAuth]=useState('loading');const [view,setView]=useState('jobs');const [error,setError]=useState('');const [jobs,setJobs]=useState<Job[]>([]);const [total,setTotal]=useState(0);const [page,setPage]=useState(1);const [query,setQuery]=useState('');const [status,setStatus]=useState('');const [after,setAfter]=useState('');const [before,setBefore]=useState('');const [owner,setOwner]=useState('');const [selected,setSelected]=useState<Job>();const [batch,setBatch]=useState<string>();const [rows,setRows]=useState<UploadRow[]>([]);const [busy,setBusy]=useState(false);const [mode,setMode]=useState('cli');const [language,setLanguage]=useState('heb+eng');const [text,setText]=useState('');const [tab,setTab]=useState('pdf');const [keys,setKeys]=useState<Key[]>([]);const [newKey,setNewKey]=useState('');const [keyName,setKeyName]=useState('');const [settings,setSettings]=useState({retention_days:30,max_concurrent_jobs:1});const generation=useRef(0);const submitKey=useRef<string|undefined>(undefined);const input=useRef<HTMLInputElement>(null);
- useEffect(()=>{fetch('/api/identity',{cache:'no-store'}).then(async r=>{const data=await r.json();if(r.ok){setProfile(data);setAuth('ready');}else setAuth(data.error||'unauthenticated');}).catch(()=>setAuth('unavailable'));},[]);
- const refresh=useCallback(async()=>{if(!profile)return;const epoch=generation.current;try{if(batch){const data=await api<{jobs:Job[]}>(`batches/${batch}`);if(epoch!==generation.current)return;setJobs(data.jobs);setTotal(data.jobs.length);}else{const params=new URLSearchParams({page:String(page),page_size:'25',q:query,status});if(after)params.set('created_after',new Date(`${after}T00:00:00`).toISOString());if(before)params.set('created_before',new Date(`${before}T23:59:59`).toISOString());if(owner)params.set('owner_id',owner);const data=await api<{items:Job[];total:number}>(`jobs?${params}`);if(epoch!==generation.current)return;setJobs(data.items);setTotal(data.total);}if(selected){const job=await api<Job>(`jobs/${selected.id}`);if(epoch===generation.current)setSelected(job);}}catch(e){if(epoch===generation.current)setError((e as Error).message);}},[profile,batch,page,query,status,after,before,owner,selected?.id]);
- useEffect(()=>{void refresh();const timer=setInterval(()=>{if(!document.hidden)void refresh();},3000);const visible=()=>{if(!document.hidden)void refresh();};document.addEventListener('visibilitychange',visible);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',visible);};},[refresh]);
- useEffect(()=>{setText('');if(selected?.artifacts.some(a=>a.kind==='text')){const controller=new AbortController();fetch(`/api/ocr/jobs/${selected.id}/artifacts/text`,{signal:controller.signal,cache:'no-store'}).then(r=>{if(!r.ok)throw Error('טעינת הטקסט נכשלה');return r.text();}).then(setText).catch(e=>{if(e.name!=='AbortError')setError(e.message);});return()=>controller.abort();}},[selected?.id,selected?.status]);
- async function switchTeam(id:string){setBusy(true);generation.current++;setJobs([]);setSelected(undefined);setRows([]);setBatch(undefined);setKeys([]);setNewKey('');setText('');setProfile(undefined);setView('jobs');setQuery('');setStatus('');setOwner('');setAfter('');setBefore('');setPage(1);setError('');submitKey.current=undefined;try{const r=await fetch('/api/identity',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:id})});if(!r.ok)throw Error('לא ניתן לעבור לצוות');setProfile(await r.json());}catch(e){setError((e as Error).message);setAuth('unauthenticated');}finally{setBusy(false);}}
- async function addFiles(files:FileList|File[]|null){if(!files||busy)return;setBusy(true);const epoch=generation.current;const additions=Array.from(files).map(file=>({key:crypto.randomUUID(),file,progress:0}));setRows(old=>[...old,...additions]);submitKey.current=undefined;for(const row of additions){try{if(!row.file.name.toLowerCase().endsWith('.pdf'))throw Error('ניתן להעלות קובצי PDF בלבד');const result=await upload(row.file,progress=>{if(epoch===generation.current)setRows(old=>old.map(r=>r.key===row.key?{...r,progress}:r));});if(epoch===generation.current)setRows(old=>old.map(r=>r.key===row.key?{...r,id:result.id,progress:100}:r));}catch(e){if(epoch===generation.current)setRows(old=>old.map(r=>r.key===row.key?{...r,error:(e as Error).message}:r));}}setBusy(false);}
- async function submit(){setBusy(true);setError('');submitKey.current??=crypto.randomUUID();try{const result=await api<{id:string;jobs:Job[]}>('batches',{method:'POST',headers:{'Idempotency-Key':submitKey.current},body:JSON.stringify({upload_ids:rows.filter(r=>r.id).map(r=>r.id),mode,language})});setBatch(result.id);setJobs(result.jobs);setTotal(result.jobs.length);setRows(r=>r.filter(x=>!x.id));setView('jobs');submitKey.current=undefined;}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- async function action(job:Job,action:string){setBusy(true);try{if(action==='delete'){if(!confirm('למחוק את המסמך ואת תוצריו?'))return;await api(`jobs/${job.id}`,{method:'DELETE'});setSelected(undefined);}else{const updated=await api<Job>(`jobs/${job.id}/${action}`,{method:'POST'});setSelected(updated);}await refresh();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- async function openSettings(){setView('settings');setSelected(undefined);setError('');try{setSettings(await api('settings'));if(profile?.role==='owner')setKeys((await api<{items:Key[]}>('keys')).items);}catch(e){setError((e as Error).message);}}
- if(auth!=='ready')return <main className="welcome"><div className="brand"><span className="brand-mark">מ</span>מסמך<span className="muted"> / OCR WORKSPACE</span></div><section className="welcome-card"><div className="eyebrow">סביבת העבודה למסמכים שלכם</div><h1>{auth==='loading'?'טוענים את סביבת העבודה…':auth==='integration_required'?'חיבור מערכת ההזדהות':'כניסה לסביבת העבודה'}</h1><p>{auth==='integration_required'?'בחירת ה־starter וחיבור מערכת ההזדהות שלו יאפשרו כניסה בטוחה לצוותים ולמסמכים. ממשק העבודה מוכן לחיבור.':auth==='loading'?'בודקים את פרטי החיבור והצוות שלך.':'יש להתחבר באמצעות מערכת ההזדהות הארגונית כדי להמשיך.'}</p>{loginUrl&&auth!=='loading'&&<a className="primary button" href={loginUrl}>כניסה לחשבון ←</a>}<div className="welcome-foot">מסמכים פרטיים · עבודה בצוות · עיבוד ברקע</div></section></main>;
- return <div className="shell"><aside className="sidebar"><a href="/" className="brand"><span className="brand-mark">מ</span>מסמך</a><div className="eyebrow">סביבת עבודה</div><label className="team-label">הצוות שלי<select aria-label="בחירת צוות" value={profile?.tenant_id||''} disabled={busy} onChange={e=>void switchTeam(e.target.value)}>{profile?.teams.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label><nav aria-label="ניווט ראשי"><button className={view==='jobs'?'nav active':'nav'} onClick={()=>{setView('jobs');setSelected(undefined);setBatch(undefined);}}>▤ <span>המסמכים שלי</span></button><button className={view==='upload'?'nav active':'nav'} onClick={()=>{setView('upload');setSelected(undefined);}}>＋ <span>העלאת מסמכים</span></button>{profile?.role!=='member'&&<button className={view==='settings'?'nav active':'nav'} onClick={()=>void openSettings()}>⚙ <span>ניהול סביבת העבודה</span></button>}</nav><div className="sidebar-bottom"><span className="avatar">{(profile?.display_name||'א').slice(0,1)}</span><div>{profile?.display_name||'החשבון שלי'}<small>{profile?.role==='owner'?'בעל צוות':profile?.role==='admin'?'מנהל צוות':'חבר צוות'}</small></div><span className="online" title="מחובר"/></div></aside><main className="content"><header className="topbar"><span>סביבת עבודה <span className="muted">/ {profile?.teams.find(t=>t.id===profile.tenant_id)?.name}</span></span><span className="secure">◈ גישה מאובטחת</span></header><div className="page"><div role="alert" className={error?'alert':'sr-only'}>{error}{error&&<button aria-label="סגירת הודעה" onClick={()=>setError('')}>×</button>}</div>
- {view==='upload'?<><div className="page-heading"><div className="eyebrow">הופכים קבצים למידע נגיש</div><h1>העלאת מסמכים</h1><p>העלו קובצי PDF. אנחנו נדאג לטקסט שניתן לחפש, להעתיק ולשתף.</p></div><section className="panel upload-panel"><button className="dropzone" disabled={busy} onClick={()=>input.current?.click()} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();void addFiles(e.dataTransfer.files);}}><span className="upload-icon">↥</span><strong>גררו לכאן מסמכים או בחרו קבצים</strong><span>קובצי PDF · ניתן לבחור מספר מסמכים יחד</span></button><input ref={input} hidden type="file" accept="application/pdf,.pdf" multiple onChange={e=>{void addFiles(e.target.files);e.target.value='';}}/><div className="form-grid"><label>שפות המסמך<select value={language} disabled={busy} onChange={e=>{setLanguage(e.target.value);submitKey.current=undefined;}}><option value="heb+eng">עברית ואנגלית</option><option value="heb">עברית</option><option value="eng">אנגלית</option></select></label><label>אופן העיבוד<select value={mode} disabled={busy} onChange={e=>{setMode(e.target.value);submitKey.current=undefined;}}><option value="cli">רגיל — שימור טקסט קיים</option><option value="force">מלא — זיהוי מחדש</option><option value="visual">חזותי</option></select></label></div>{rows.map(r=><div className="upload-row" key={r.key}><span className="file-icon">PDF</span><div><strong>{r.file.name}</strong><small>{r.error|| (r.id?'מוכן להגשה':`מעלה ${r.progress}%`)}</small>{!r.error&&!r.id&&<progress aria-label={`העלאת ${r.file.name}`} value={r.progress} max={100}/>}</div><span className={r.error?'error-text':'success-text'}>{r.error?'!':r.id?'✓':''}</span></div>)}<div className="panel-footer"><span className="muted">לאחר ההגשה ניתן לסגור את הדפדפן. העבודה תמשיך ברקע.</span><button className="primary" disabled={busy||!rows.some(r=>r.id)} onClick={()=>void submit()}>{busy?'מעבדים את הבקשה…':`התחלת עיבוד${rows.some(r=>r.id)?` · ${rows.filter(r=>r.id).length} מסמכים`:''}`} ←</button></div></section></>:view==='settings'?<><div className="page-heading"><div className="eyebrow">הצוות וההעדפות שלכם</div><h1>ניהול סביבת העבודה</h1><p>מדיניות מסמכים, חברי צוות ואינטגרציות.</p></div><section className="panel settings"><h2>עיבוד ושמירת מסמכים</h2><div className="form-grid"><label>ימי שמירת מסמכים<input type="number" min="1" max="365" value={settings.retention_days} disabled={profile?.role!=='owner'} onChange={e=>setSettings({...settings,retention_days:Number(e.target.value)})}/></label><label>מסמכים בעיבוד במקביל<input type="number" min="1" max="100" value={settings.max_concurrent_jobs} disabled={profile?.role!=='owner'} onChange={e=>setSettings({...settings,max_concurrent_jobs:Number(e.target.value)})}/></label></div>{profile?.role==='owner'&&<button className="primary" onClick={()=>api('settings',{method:'PATCH',body:JSON.stringify(settings)}).then(()=>setError('ההגדרות נשמרו')).catch(e=>setError(e.message))}>שמירת הגדרות</button>}</section><section className="panel settings"><h2>חברי צוות</h2><p className="muted">ניהול ההזמנות והתפקידים מתבצע במערכת ההזדהות של הארגון.</p>{membersUrl?<a href={membersUrl} className="button">ניהול חברי צוות ←</a>:<p>קישור ניהול הצוות יהיה זמין לאחר חיבור מערכת ההזדהות.</p>}</section>{profile?.role==='owner'&&<section className="panel settings"><h2>מפתחות API</h2><p className="muted">מפתחות לחיבור מערכות חיצוניות, עם הרשאות קריאה והגשת מסמכים.</p><form className="inline-form" onSubmit={async e=>{e.preventDefault();try{const key=await api<{token:string}>('keys',{method:'POST',body:JSON.stringify({name:keyName,scopes:['read','write']})});setNewKey(key.token);setKeyName('');setKeys((await api<{items:Key[]}>('keys')).items);}catch(e){setError((e as Error).message);}}}><input aria-label="שם המפתח" placeholder="שם האינטגרציה" value={keyName} onChange={e=>setKeyName(e.target.value)} required maxLength={100}/><button className="primary">יצירת מפתח</button></form>{newKey&&<div className="token"><p>המפתח מוצג פעם אחת. שמרו אותו במקום בטוח.</p><code dir="ltr">{newKey}</code><button onClick={()=>setNewKey('')}>הסתרה</button></div>}{keys.map(key=><div className="upload-row" key={key.id}><div><strong>{key.name}</strong><small>{key.revoked_at?'בוטל':key.scopes.join(', ')}</small></div>{!key.revoked_at&&<button onClick={async()=>{if(!confirm('לבטל את המפתח?'))return;try{await api(`keys/${key.id}`,{method:'DELETE'});setKeys((await api<{items:Key[]}>('keys')).items);}catch(e){setError((e as Error).message);}}}>ביטול מפתח</button>}</div>)}</section>}</>:selected?<><button className="back" onClick={()=>setSelected(undefined)}>→ חזרה למסמכים</button><div className="page-heading detail-heading"><div><div className="eyebrow">פרטי מסמך</div><h1>{selected.filename}</h1><p>הועלה {date(selected.created_at)} · ניסיון {selected.attempt_count}</p></div><span className={`badge ${selected.status}`}>{labels[selected.status]}</span></div><div className="detail-actions">{selected.artifacts.map(a=><a key={a.kind} className="button" href={`/api/ocr/jobs/${selected.id}/artifacts/${a.kind}`} download>{a.kind.toUpperCase()} ↓</a>)}{active(selected)&&<button disabled={busy||selected.status==='cancel_requested'} onClick={()=>void action(selected,'cancel')}>ביטול עיבוד</button>}{['failed','cancelled'].includes(selected.status)&&<button disabled={busy} onClick={()=>void action(selected,'retry')}>ניסיון נוסף</button>}{!active(selected)&&<button className="danger" disabled={busy} onClick={()=>void action(selected,'delete')}>מחיקה</button>}</div>{selected.error_message&&<div className="alert">{selected.error_message}</div>}{selected.expires_at&&<p className="muted">המסמך ותוצריו יימחקו אוטומטית ב־{date(selected.expires_at)}</p>}{selected.status==='completed'?<><div className="mobile-tabs" role="tablist" aria-label="תצוגת תוצר"><button role="tab" aria-selected={tab==='pdf'} onClick={()=>setTab('pdf')}>מסמך PDF</button><button role="tab" aria-selected={tab==='text'} onClick={()=>setTab('text')}>טקסט מזוהה</button></div><div className={`preview tab-${tab}`}><section className="panel pdf-pane"><h2>המסמך המעובד</h2><iframe title="תצוגת מסמך PDF" sandbox src={`/api/ocr/jobs/${selected.id}/artifacts/pdf`}/></section><section className="panel text-pane"><h2>הטקסט המזוהה</h2><pre>{text||'טוענים טקסט…'}</pre></section></div></>:<section className="panel empty"><span className="empty-icon">◷</span><h2>{labels[selected.status]}</h2><p>{selected.stage||'המסמך ממתין להמשך העיבוד'}</p>{selected.started_at&&<p>תחילת עיבוד: {date(selected.started_at)}</p>}</section>}</>:<><div className="page-heading row-heading"><div><div className="eyebrow">כל המידע. במקום אחד.</div><h1>{batch?'מעקב אחר אצווה':'המסמכים שלי'}</h1><p>מהעלאה ועד טקסט נגיש — כל המסמכים שלכם, מסודרים ומוכנים לעבודה.</p></div><button className="primary" onClick={()=>setView('upload')}>＋ העלאת מסמכים</button></div><div className="stats"><div><span className="stat-icon">▤</span><div><small>מסמכים בתצוגה</small><strong>{total}</strong></div></div><div><span className="stat-icon teal">✓</span><div><small>הושלמו בעמוד זה</small><strong>{jobs.filter(j=>j.status==='completed').length}</strong></div></div><div><span className="stat-icon amber">◷</span><div><small>פעילים בעמוד זה</small><strong>{jobs.filter(active).length}</strong></div></div></div><section className="panel"><div className="table-toolbar"><h2>{batch?'מסמכי האצווה':'ספריית מסמכים'}</h2>{batch?<><button onClick={()=>setBatch(undefined)}>כל המסמכים</button><a className="button" href={`/api/ocr/batches/${batch}/archive`}>הורדת תוצרים מוכנים ↓</a></>:<div className="filters"><input aria-label="חיפוש מסמכים" placeholder="חיפוש לפי שם מסמך…" value={query} onChange={e=>{setQuery(e.target.value);setPage(1);}}/><select aria-label="סינון מצב" value={status} onChange={e=>{setStatus(e.target.value);setPage(1);}}><option value="">כל המצבים</option>{Object.entries(labels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select><input aria-label="מתאריך" title="מתאריך" type="date" value={after} onChange={e=>{setAfter(e.target.value);setPage(1);}}/><input aria-label="עד תאריך" title="עד תאריך" type="date" value={before} onChange={e=>{setBefore(e.target.value);setPage(1);}}/>{profile?.role!=='member'&&<input aria-label="מזהה מגיש" placeholder="מזהה מגיש" value={owner} onChange={e=>{setOwner(e.target.value);setPage(1);}}/>}</div>}</div>{jobs.length?<div className="table-scroll"><table><thead><tr><th>שם המסמך</th><th>מצב</th><th>מועד העלאה</th><th>שפה</th><th><span className="sr-only">פתיחה</span></th></tr></thead><tbody>{jobs.map(job=><tr key={job.id}><td><button className="file-button" onClick={()=>setSelected(job)}><span className="file-icon">PDF</span><span>{job.filename}<small>{job.mode==='force'?'זיהוי מחדש':'זיהוי טקסט'}</small></span></button></td><td><span className={`badge ${job.status}`}>{labels[job.status]||job.status}</span></td><td className="muted">{date(job.created_at)}</td><td className="muted">{job.language}</td><td><button aria-label={`פתיחת ${job.filename}`} onClick={()=>setSelected(job)}>←</button></td></tr>)}</tbody></table></div>:<div className="empty"><span className="empty-icon">▤</span><h2>{query||status?'לא נמצאו מסמכים מתאימים':'מתחילים עם המסמך הראשון'}</h2><p>{query||status?'נסו לשנות את החיפוש או הסינון.':'העלו PDF והפכו אותו למסמך שאפשר לחפש בו.'}</p><button className="primary" onClick={()=>setView('upload')}>העלאת מסמכים</button></div>}<div className="panel-footer"><span className="muted">{total} מסמכים · מתעדכן אוטומטית</span>{!batch&&<div className="pagination"><button disabled={page<=1} onClick={()=>setPage(p=>p-1)}>הקודם</button><span>{page}</span><button disabled={page*25>=total} onClick={()=>setPage(p=>p+1)}>הבא</button></div>}</div></section><p className="footnote">◈ המסמכים נגישים רק לך ולמנהלי הצוות שלך.</p></>}
- </div></main></div>;
+"use client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Identity } from "../../lib/security";
+import { api, upload, type Job } from "../../lib/api";
+const labels: Record<string, string> = {
+  queued: "בתור",
+  running: "בעיבוד",
+  retry_wait: "ממתין לניסיון נוסף",
+  cancel_requested: "מבטל",
+  cancelled: "בוטל",
+  failed: "נכשל",
+  completed: "הושלם",
+};
+const date = (v?: string) => (v ? new Date(v).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—");
+const active = (j: Job) => ["queued", "running", "retry_wait", "cancel_requested"].includes(j.status);
+type UploadRow = { key: string; file: File; progress: number; id?: string; error?: string };
+type Key = { id: string; name: string; scopes: string[]; revoked_at?: string };
+export default function Workspace({ loginUrl, membersUrl }: { loginUrl?: string; membersUrl?: string }) {
+  const [profile, setProfile] = useState<Identity>();
+  const [auth, setAuth] = useState("loading");
+  const [view, setView] = useState("jobs");
+  const [error, setError] = useState("");
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("");
+  const [after, setAfter] = useState("");
+  const [before, setBefore] = useState("");
+  const [owner, setOwner] = useState("");
+  const [selected, setSelected] = useState<Job>();
+  const [batch, setBatch] = useState<string>();
+  const [rows, setRows] = useState<UploadRow[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState("cli");
+  const [language, setLanguage] = useState("heb+eng");
+  const [text, setText] = useState("");
+  const [tab, setTab] = useState("pdf");
+  const [keys, setKeys] = useState<Key[]>([]);
+  const [newKey, setNewKey] = useState("");
+  const [keyName, setKeyName] = useState("");
+  const [settings, setSettings] = useState({ retention_days: 30, max_concurrent_jobs: 1 });
+  const generation = useRef(0);
+  const submitKey = useRef<string | undefined>(undefined);
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    fetch("/api/identity", { cache: "no-store" })
+      .then(async (r) => {
+        const data = await r.json();
+        if (r.ok) {
+          setProfile(data);
+          setAuth("ready");
+        } else setAuth(data.error || "unauthenticated");
+      })
+      .catch(() => setAuth("unavailable"));
+  }, []);
+  const refresh = useCallback(async () => {
+    if (!profile) return;
+    const epoch = generation.current;
+    try {
+      if (batch) {
+        const data = await api<{ jobs: Job[] }>(`batches/${batch}`);
+        if (epoch !== generation.current) return;
+        setJobs(data.jobs);
+        setTotal(data.jobs.length);
+      } else {
+        const params = new URLSearchParams({ page: String(page), page_size: "25", q: query, status });
+        if (after) params.set("created_after", new Date(`${after}T00:00:00`).toISOString());
+        if (before) params.set("created_before", new Date(`${before}T23:59:59`).toISOString());
+        if (owner) params.set("owner_id", owner);
+        const data = await api<{ items: Job[]; total: number }>(`jobs?${params}`);
+        if (epoch !== generation.current) return;
+        setJobs(data.items);
+        setTotal(data.total);
+      }
+      if (selected) {
+        const job = await api<Job>(`jobs/${selected.id}`);
+        if (epoch === generation.current) setSelected(job);
+      }
+    } catch (e) {
+      if (epoch === generation.current) setError((e as Error).message);
+    }
+  }, [profile, batch, page, query, status, after, before, owner, selected?.id]);
+  useEffect(() => {
+    void refresh();
+    const timer = setInterval(() => {
+      if (!document.hidden) void refresh();
+    }, 3000);
+    const visible = () => {
+      if (!document.hidden) void refresh();
+    };
+    document.addEventListener("visibilitychange", visible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", visible);
+    };
+  }, [refresh]);
+  useEffect(() => {
+    setText("");
+    if (selected?.artifacts.some((a) => a.kind === "text")) {
+      const controller = new AbortController();
+      fetch(`/api/ocr/jobs/${selected.id}/artifacts/text`, { signal: controller.signal, cache: "no-store" })
+        .then((r) => {
+          if (!r.ok) throw Error("טעינת הטקסט נכשלה");
+          return r.text();
+        })
+        .then(setText)
+        .catch((e) => {
+          if (e.name !== "AbortError") setError(e.message);
+        });
+      return () => controller.abort();
+    }
+  }, [selected?.id, selected?.status]);
+  async function switchTeam(id: string) {
+    setBusy(true);
+    generation.current++;
+    setJobs([]);
+    setSelected(undefined);
+    setRows([]);
+    setBatch(undefined);
+    setKeys([]);
+    setNewKey("");
+    setText("");
+    setProfile(undefined);
+    setView("jobs");
+    setQuery("");
+    setStatus("");
+    setOwner("");
+    setAfter("");
+    setBefore("");
+    setPage(1);
+    setError("");
+    submitKey.current = undefined;
+    try {
+      const r = await fetch("/api/identity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenant_id: id }),
+      });
+      if (!r.ok) throw Error("לא ניתן לעבור לצוות");
+      setProfile(await r.json());
+    } catch (e) {
+      setError((e as Error).message);
+      setAuth("unauthenticated");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function addFiles(files: FileList | File[] | null) {
+    if (!files || busy) return;
+    setBusy(true);
+    const epoch = generation.current;
+    const additions = Array.from(files).map((file) => ({ key: crypto.randomUUID(), file, progress: 0 }));
+    setRows((old) => [...old, ...additions]);
+    submitKey.current = undefined;
+    for (const row of additions) {
+      try {
+        if (!row.file.name.toLowerCase().endsWith(".pdf")) throw Error("ניתן להעלות קובצי PDF בלבד");
+        const result = await upload(row.file, (progress) => {
+          if (epoch === generation.current) setRows((old) => old.map((r) => (r.key === row.key ? { ...r, progress } : r)));
+        });
+        if (epoch === generation.current) setRows((old) => old.map((r) => (r.key === row.key ? { ...r, id: result.id, progress: 100 } : r)));
+      } catch (e) {
+        if (epoch === generation.current) setRows((old) => old.map((r) => (r.key === row.key ? { ...r, error: (e as Error).message } : r)));
+      }
+    }
+    setBusy(false);
+  }
+  async function submit() {
+    setBusy(true);
+    setError("");
+    submitKey.current ??= crypto.randomUUID();
+    try {
+      const result = await api<{ id: string; jobs: Job[] }>("batches", {
+        method: "POST",
+        headers: { "Idempotency-Key": submitKey.current },
+        body: JSON.stringify({ upload_ids: rows.filter((r) => r.id).map((r) => r.id), mode, language }),
+      });
+      setBatch(result.id);
+      setJobs(result.jobs);
+      setTotal(result.jobs.length);
+      setRows((r) => r.filter((x) => !x.id));
+      setView("jobs");
+      submitKey.current = undefined;
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function action(job: Job, action: string) {
+    setBusy(true);
+    try {
+      if (action === "delete") {
+        if (!confirm("למחוק את המסמך ואת תוצריו?")) return;
+        await api(`jobs/${job.id}`, { method: "DELETE" });
+        setSelected(undefined);
+      } else {
+        const updated = await api<Job>(`jobs/${job.id}/${action}`, { method: "POST" });
+        setSelected(updated);
+      }
+      await refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function openSettings() {
+    setView("settings");
+    setSelected(undefined);
+    setError("");
+    try {
+      setSettings(await api("settings"));
+      if (profile?.role === "owner") setKeys((await api<{ items: Key[] }>("keys")).items);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  if (auth !== "ready")
+    return (
+      <main className="welcome">
+        <div className="brand">
+          <span className="brand-mark">מ</span>מסמך<span className="muted"> / OCR WORKSPACE</span>
+        </div>
+        <section className="welcome-card">
+          <div className="eyebrow">סביבת העבודה למסמכים שלכם</div>
+          <h1>
+            {auth === "loading" ?
+              "טוענים את סביבת העבודה…"
+            : auth === "integration_required" ?
+              "חיבור מערכת ההזדהות"
+            : "כניסה לסביבת העבודה"}
+          </h1>
+          <p>
+            {auth === "integration_required" ?
+              "בחירת ה־starter וחיבור מערכת ההזדהות שלו יאפשרו כניסה בטוחה לצוותים ולמסמכים. ממשק העבודה מוכן לחיבור."
+            : auth === "loading" ?
+              "בודקים את פרטי החיבור והצוות שלך."
+            : "יש להתחבר באמצעות מערכת ההזדהות הארגונית כדי להמשיך."}
+          </p>
+          {loginUrl && auth !== "loading" && (
+            <a className="primary button" href={loginUrl}>
+              כניסה לחשבון ←
+            </a>
+          )}
+          <div className="welcome-foot">מסמכים פרטיים · עבודה בצוות · עיבוד ברקע</div>
+        </section>
+      </main>
+    );
+  return (
+    <div className="shell">
+      <aside className="sidebar">
+        <a href="/" className="brand">
+          <span className="brand-mark">מ</span>מסמך
+        </a>
+        <div className="eyebrow">סביבת עבודה</div>
+        <label className="team-label">
+          הצוות שלי
+          <select aria-label="בחירת צוות" value={profile?.tenant_id || ""} disabled={busy} onChange={(e) => void switchTeam(e.target.value)}>
+            {profile?.teams.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <nav aria-label="ניווט ראשי">
+          <button
+            className={view === "jobs" ? "nav active" : "nav"}
+            onClick={() => {
+              setView("jobs");
+              setSelected(undefined);
+              setBatch(undefined);
+            }}>
+            ▤ <span>המסמכים שלי</span>
+          </button>
+          <button
+            className={view === "upload" ? "nav active" : "nav"}
+            onClick={() => {
+              setView("upload");
+              setSelected(undefined);
+            }}>
+            ＋ <span>העלאת מסמכים</span>
+          </button>
+          {profile?.role !== "member" && (
+            <button className={view === "settings" ? "nav active" : "nav"} onClick={() => void openSettings()}>
+              ⚙ <span>ניהול סביבת העבודה</span>
+            </button>
+          )}
+        </nav>
+        <div className="sidebar-bottom">
+          <span className="avatar">{(profile?.display_name || "א").slice(0, 1)}</span>
+          <div>
+            {profile?.display_name || "החשבון שלי"}
+            <small>
+              {profile?.role === "owner" ?
+                "בעל צוות"
+              : profile?.role === "admin" ?
+                "מנהל צוות"
+              : "חבר צוות"}
+            </small>
+          </div>
+          <span className="online" title="מחובר" />
+        </div>
+      </aside>
+      <main className="content">
+        <header className="topbar">
+          <span>
+            סביבת עבודה <span className="muted">/ {profile?.teams.find((t) => t.id === profile.tenant_id)?.name}</span>
+          </span>
+          <span className="secure">◈ גישה מאובטחת</span>
+        </header>
+        <div className="page">
+          <div role="alert" className={error ? "alert" : "sr-only"}>
+            {error}
+            {error && (
+              <button aria-label="סגירת הודעה" onClick={() => setError("")}>
+                ×
+              </button>
+            )}
+          </div>
+          {view === "upload" ?
+            <>
+              <div className="page-heading">
+                <div className="eyebrow">הופכים קבצים למידע נגיש</div>
+                <h1>העלאת מסמכים</h1>
+                <p>העלו קובצי PDF. אנחנו נדאג לטקסט שניתן לחפש, להעתיק ולשתף.</p>
+              </div>
+              <section className="panel upload-panel">
+                <button
+                  className="dropzone"
+                  disabled={busy}
+                  onClick={() => input.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    void addFiles(e.dataTransfer.files);
+                  }}>
+                  <span className="upload-icon">↥</span>
+                  <strong>גררו לכאן מסמכים או בחרו קבצים</strong>
+                  <span>קובצי PDF · ניתן לבחור מספר מסמכים יחד</span>
+                </button>
+                <input
+                  ref={input}
+                  hidden
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  multiple
+                  onChange={(e) => {
+                    void addFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+                <div className="form-grid">
+                  <label>
+                    שפות המסמך
+                    <select
+                      value={language}
+                      disabled={busy}
+                      onChange={(e) => {
+                        setLanguage(e.target.value);
+                        submitKey.current = undefined;
+                      }}>
+                      <option value="heb+eng">עברית ואנגלית</option>
+                      <option value="heb">עברית</option>
+                      <option value="eng">אנגלית</option>
+                    </select>
+                  </label>
+                  <label>
+                    אופן העיבוד
+                    <select
+                      value={mode}
+                      disabled={busy}
+                      onChange={(e) => {
+                        setMode(e.target.value);
+                        submitKey.current = undefined;
+                      }}>
+                      <option value="cli">רגיל — שימור טקסט קיים</option>
+                      <option value="force">מלא — זיהוי מחדש</option>
+                      <option value="visual">חזותי</option>
+                    </select>
+                  </label>
+                </div>
+                {rows.map((r) => (
+                  <div className="upload-row" key={r.key}>
+                    <span className="file-icon">PDF</span>
+                    <div>
+                      <strong>{r.file.name}</strong>
+                      <small>{r.error || (r.id ? "מוכן להגשה" : `מעלה ${r.progress}%`)}</small>
+                      {!r.error && !r.id && <progress aria-label={`העלאת ${r.file.name}`} value={r.progress} max={100} />}
+                    </div>
+                    <span className={r.error ? "error-text" : "success-text"}>
+                      {r.error ?
+                        "!"
+                      : r.id ?
+                        "✓"
+                      : ""}
+                    </span>
+                  </div>
+                ))}
+                <div className="panel-footer">
+                  <span className="muted">לאחר ההגשה ניתן לסגור את הדפדפן. העבודה תמשיך ברקע.</span>
+                  <button className="primary" disabled={busy || !rows.some((r) => r.id)} onClick={() => void submit()}>
+                    {busy ? "מעבדים את הבקשה…" : `התחלת עיבוד${rows.some((r) => r.id) ? ` · ${rows.filter((r) => r.id).length} מסמכים` : ""}`} ←
+                  </button>
+                </div>
+              </section>
+            </>
+          : view === "settings" ?
+            <>
+              <div className="page-heading">
+                <div className="eyebrow">הצוות וההעדפות שלכם</div>
+                <h1>ניהול סביבת העבודה</h1>
+                <p>מדיניות מסמכים, חברי צוות ואינטגרציות.</p>
+              </div>
+              <section className="panel settings">
+                <h2>עיבוד ושמירת מסמכים</h2>
+                <div className="form-grid">
+                  <label>
+                    ימי שמירת מסמכים
+                    <input
+                      type="number"
+                      min="1"
+                      max="365"
+                      value={settings.retention_days}
+                      disabled={profile?.role !== "owner"}
+                      onChange={(e) => setSettings({ ...settings, retention_days: Number(e.target.value) })}
+                    />
+                  </label>
+                  <label>
+                    מסמכים בעיבוד במקביל
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={settings.max_concurrent_jobs}
+                      disabled={profile?.role !== "owner"}
+                      onChange={(e) => setSettings({ ...settings, max_concurrent_jobs: Number(e.target.value) })}
+                    />
+                  </label>
+                </div>
+                {profile?.role === "owner" && (
+                  <button
+                    className="primary"
+                    onClick={() =>
+                      api("settings", { method: "PATCH", body: JSON.stringify(settings) })
+                        .then(() => setError("ההגדרות נשמרו"))
+                        .catch((e) => setError(e.message))
+                    }>
+                    שמירת הגדרות
+                  </button>
+                )}
+              </section>
+              <section className="panel settings">
+                <h2>חברי צוות</h2>
+                <p className="muted">ניהול ההזמנות והתפקידים מתבצע במערכת ההזדהות של הארגון.</p>
+                {membersUrl ?
+                  <a href={membersUrl} className="button">
+                    ניהול חברי צוות ←
+                  </a>
+                : <p>קישור ניהול הצוות יהיה זמין לאחר חיבור מערכת ההזדהות.</p>}
+              </section>
+              {profile?.role === "owner" && (
+                <section className="panel settings">
+                  <h2>מפתחות API</h2>
+                  <p className="muted">מפתחות לחיבור מערכות חיצוניות, עם הרשאות קריאה והגשת מסמכים.</p>
+                  <form
+                    className="inline-form"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      try {
+                        const key = await api<{ token: string }>("keys", {
+                          method: "POST",
+                          body: JSON.stringify({ name: keyName, scopes: ["read", "write"] }),
+                        });
+                        setNewKey(key.token);
+                        setKeyName("");
+                        setKeys((await api<{ items: Key[] }>("keys")).items);
+                      } catch (e) {
+                        setError((e as Error).message);
+                      }
+                    }}>
+                    <input
+                      aria-label="שם המפתח"
+                      placeholder="שם האינטגרציה"
+                      value={keyName}
+                      onChange={(e) => setKeyName(e.target.value)}
+                      required
+                      maxLength={100}
+                    />
+                    <button className="primary">יצירת מפתח</button>
+                  </form>
+                  {newKey && (
+                    <div className="token">
+                      <p>המפתח מוצג פעם אחת. שמרו אותו במקום בטוח.</p>
+                      <code dir="ltr">{newKey}</code>
+                      <button onClick={() => setNewKey("")}>הסתרה</button>
+                    </div>
+                  )}
+                  {keys.map((key) => (
+                    <div className="upload-row" key={key.id}>
+                      <div>
+                        <strong>{key.name}</strong>
+                        <small>{key.revoked_at ? "בוטל" : key.scopes.join(", ")}</small>
+                      </div>
+                      {!key.revoked_at && (
+                        <button
+                          onClick={async () => {
+                            if (!confirm("לבטל את המפתח?")) return;
+                            try {
+                              await api(`keys/${key.id}`, { method: "DELETE" });
+                              setKeys((await api<{ items: Key[] }>("keys")).items);
+                            } catch (e) {
+                              setError((e as Error).message);
+                            }
+                          }}>
+                          ביטול מפתח
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </section>
+              )}
+            </>
+          : selected ?
+            <>
+              <button className="back" onClick={() => setSelected(undefined)}>
+                → חזרה למסמכים
+              </button>
+              <div className="page-heading detail-heading">
+                <div>
+                  <div className="eyebrow">פרטי מסמך</div>
+                  <h1>{selected.filename}</h1>
+                  <p>
+                    הועלה {date(selected.created_at)} · ניסיון {selected.attempt_count}
+                  </p>
+                </div>
+                <span className={`badge ${selected.status}`}>{labels[selected.status]}</span>
+              </div>
+              <div className="detail-actions">
+                {selected.artifacts.map((a) => (
+                  <a key={a.kind} className="button" href={`/api/ocr/jobs/${selected.id}/artifacts/${a.kind}`} download>
+                    {a.kind.toUpperCase()} ↓
+                  </a>
+                ))}
+                {active(selected) && (
+                  <button disabled={busy || selected.status === "cancel_requested"} onClick={() => void action(selected, "cancel")}>
+                    ביטול עיבוד
+                  </button>
+                )}
+                {["failed", "cancelled"].includes(selected.status) && (
+                  <button disabled={busy} onClick={() => void action(selected, "retry")}>
+                    ניסיון נוסף
+                  </button>
+                )}
+                {!active(selected) && (
+                  <button className="danger" disabled={busy} onClick={() => void action(selected, "delete")}>
+                    מחיקה
+                  </button>
+                )}
+              </div>
+              {selected.error_message && <div className="alert">{selected.error_message}</div>}
+              {selected.expires_at && <p className="muted">המסמך ותוצריו יימחקו אוטומטית ב־{date(selected.expires_at)}</p>}
+              {selected.status === "completed" ?
+                <>
+                  <div className="mobile-tabs" role="tablist" aria-label="תצוגת תוצר">
+                    <button role="tab" aria-selected={tab === "pdf"} onClick={() => setTab("pdf")}>
+                      מסמך PDF
+                    </button>
+                    <button role="tab" aria-selected={tab === "text"} onClick={() => setTab("text")}>
+                      טקסט מזוהה
+                    </button>
+                  </div>
+                  <div className={`preview tab-${tab}`}>
+                    <section className="panel pdf-pane">
+                      <h2>המסמך המעובד</h2>
+                      <iframe title="תצוגת מסמך PDF" sandbox src={`/api/ocr/jobs/${selected.id}/artifacts/pdf`} />
+                    </section>
+                    <section className="panel text-pane">
+                      <h2>הטקסט המזוהה</h2>
+                      <pre>{text || "טוענים טקסט…"}</pre>
+                    </section>
+                  </div>
+                </>
+              : <section className="panel empty">
+                  <span className="empty-icon">◷</span>
+                  <h2>{labels[selected.status]}</h2>
+                  <p>{selected.stage || "המסמך ממתין להמשך העיבוד"}</p>
+                  {selected.started_at && <p>תחילת עיבוד: {date(selected.started_at)}</p>}
+                </section>
+              }
+            </>
+          : <>
+              <div className="page-heading row-heading">
+                <div>
+                  <div className="eyebrow">כל המידע. במקום אחד.</div>
+                  <h1>{batch ? "מעקב אחר אצווה" : "המסמכים שלי"}</h1>
+                  <p>מהעלאה ועד טקסט נגיש — כל המסמכים שלכם, מסודרים ומוכנים לעבודה.</p>
+                </div>
+                <button className="primary" onClick={() => setView("upload")}>
+                  ＋ העלאת מסמכים
+                </button>
+              </div>
+              <div className="stats">
+                <div>
+                  <span className="stat-icon">▤</span>
+                  <div>
+                    <small>מסמכים בתצוגה</small>
+                    <strong>{total}</strong>
+                  </div>
+                </div>
+                <div>
+                  <span className="stat-icon teal">✓</span>
+                  <div>
+                    <small>הושלמו בעמוד זה</small>
+                    <strong>{jobs.filter((j) => j.status === "completed").length}</strong>
+                  </div>
+                </div>
+                <div>
+                  <span className="stat-icon amber">◷</span>
+                  <div>
+                    <small>פעילים בעמוד זה</small>
+                    <strong>{jobs.filter(active).length}</strong>
+                  </div>
+                </div>
+              </div>
+              <section className="panel">
+                <div className="table-toolbar">
+                  <h2>{batch ? "מסמכי האצווה" : "ספריית מסמכים"}</h2>
+                  {batch ?
+                    <>
+                      <button onClick={() => setBatch(undefined)}>כל המסמכים</button>
+                      <a className="button" href={`/api/ocr/batches/${batch}/archive`}>
+                        הורדת תוצרים מוכנים ↓
+                      </a>
+                    </>
+                  : <div className="filters">
+                      <input
+                        aria-label="חיפוש מסמכים"
+                        placeholder="חיפוש לפי שם מסמך…"
+                        value={query}
+                        onChange={(e) => {
+                          setQuery(e.target.value);
+                          setPage(1);
+                        }}
+                      />
+                      <select
+                        aria-label="סינון מצב"
+                        value={status}
+                        onChange={(e) => {
+                          setStatus(e.target.value);
+                          setPage(1);
+                        }}>
+                        <option value="">כל המצבים</option>
+                        {Object.entries(labels).map(([v, l]) => (
+                          <option key={v} value={v}>
+                            {l}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        aria-label="מתאריך"
+                        title="מתאריך"
+                        type="date"
+                        value={after}
+                        onChange={(e) => {
+                          setAfter(e.target.value);
+                          setPage(1);
+                        }}
+                      />
+                      <input
+                        aria-label="עד תאריך"
+                        title="עד תאריך"
+                        type="date"
+                        value={before}
+                        onChange={(e) => {
+                          setBefore(e.target.value);
+                          setPage(1);
+                        }}
+                      />
+                      {profile?.role !== "member" && (
+                        <input
+                          aria-label="מזהה מגיש"
+                          placeholder="מזהה מגיש"
+                          value={owner}
+                          onChange={(e) => {
+                            setOwner(e.target.value);
+                            setPage(1);
+                          }}
+                        />
+                      )}
+                    </div>
+                  }
+                </div>
+                {jobs.length ?
+                  <div className="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>שם המסמך</th>
+                          <th>מצב</th>
+                          <th>מועד העלאה</th>
+                          <th>שפה</th>
+                          <th>
+                            <span className="sr-only">פתיחה</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {jobs.map((job) => (
+                          <tr key={job.id}>
+                            <td>
+                              <button className="file-button" onClick={() => setSelected(job)}>
+                                <span className="file-icon">PDF</span>
+                                <span>
+                                  {job.filename}
+                                  <small>{job.mode === "force" ? "זיהוי מחדש" : "זיהוי טקסט"}</small>
+                                </span>
+                              </button>
+                            </td>
+                            <td>
+                              <span className={`badge ${job.status}`}>{labels[job.status] || job.status}</span>
+                            </td>
+                            <td className="muted">{date(job.created_at)}</td>
+                            <td className="muted">{job.language}</td>
+                            <td>
+                              <button aria-label={`פתיחת ${job.filename}`} onClick={() => setSelected(job)}>
+                                ←
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                : <div className="empty">
+                    <span className="empty-icon">▤</span>
+                    <h2>{query || status ? "לא נמצאו מסמכים מתאימים" : "מתחילים עם המסמך הראשון"}</h2>
+                    <p>{query || status ? "נסו לשנות את החיפוש או הסינון." : "העלו PDF והפכו אותו למסמך שאפשר לחפש בו."}</p>
+                    <button className="primary" onClick={() => setView("upload")}>
+                      העלאת מסמכים
+                    </button>
+                  </div>
+                }
+                <div className="panel-footer">
+                  <span className="muted">{total} מסמכים · מתעדכן אוטומטית</span>
+                  {!batch && (
+                    <div className="pagination">
+                      <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                        הקודם
+                      </button>
+                      <span>{page}</span>
+                      <button disabled={page * 25 >= total} onClick={() => setPage((p) => p + 1)}>
+                        הבא
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </section>
+              <p className="footnote">◈ המסמכים נגישים רק לך ולמנהלי הצוות שלך.</p>
+            </>
+          }
+        </div>
+      </main>
+    </div>
+  );
 }
